@@ -362,7 +362,7 @@ function imgUploadHTML(inputId, value, label, placeholder) {
         </div>
       </div>
     </div>
-    <script>setTimeout(() => wireImageDrop('${zoneId}','${inputId}','${previewId}'), 0);</script>
+    <script>setTimeout(() => wireImageDrop('${zoneId}','${inputId}','${previewId}'), 0);<\/script>
   `;
 }
 /* For multiple images: list with thumbnails + add via drag/upload */
@@ -381,7 +381,7 @@ function imgMultiHTML(arrayInputId, images, label) {
         <div class="img-thumbs" id="${thumbsId}">${(images||[]).map((src,i)=>`<div class="t"><img src="${esc(src)}" /><button class="rm" type="button" onclick="removeMultiImage('${arrayInputId}','${thumbsId}',${i})">×</button></div>`).join('')}</div>
       </div>
     </div>
-    <script>setTimeout(() => wireMultiDrop('${zoneId}','${arrayInputId}','${thumbsId}'), 0);</script>
+    <script>setTimeout(() => wireMultiDrop('${zoneId}','${arrayInputId}','${thumbsId}'), 0);<\/script>
   `;
 }
 async function pickAndAddImages(arrayInputId, thumbsId) {
