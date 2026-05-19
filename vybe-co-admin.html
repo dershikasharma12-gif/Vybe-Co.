@@ -187,7 +187,7 @@
 <div class="toast" id="toast"></div>
 <script>
 const LS_KEY = 'vybe_co_data_v1';
-const CUSTOMER_SITE = '/';
+const CUSTOMER_SITE = 'https://vybe-co-five.vercel.app/';
 
 /* ============================================================
    CLOUD SYNC — JSONBin.io (cross-device live sync)
@@ -245,6 +245,10 @@ const SEED = {
     footerTagline: 'Curated pieces, made to be styled and restyled.',
     instagram: '@vybe.co',
     email: 'hello@vybeco.studio',
+    logoMain: 'Vybe',
+    logoSub: 'Co.',
+    logoEmojiBefore: '',
+    logoEmojiAfter: '',
   },
   adminPassword: 'vybe2026',
   categories: [], products: [], articles: [], cart: [], savedLooks: [],
@@ -353,6 +357,7 @@ function renderApp() {
       <main class="main" id="main"></main>
     </div>`;
   renderTab();
+  applyAdminBranding();
 }
 
 function renderTab() {
@@ -602,6 +607,7 @@ function openArticleModal(id) {
       <div class="field"><label>Author</label><input id="a-author" value="${esc(data.author)}" /></div>
       <div class="field"><label>Date</label><input id="a-date" type="date" value="${esc(data.date)}" /></div>
       <div class="field full"><label>Cover image URL</label><input id="a-img" value="${esc(data.image)}" placeholder="https://..." /></div>
+      <div class="field full"><label>Additional images (one URL per line — appear at end of article)</label><textarea id="a-imgs" rows="3" placeholder="https://...&#10;https://...">${esc((data.images||[]).join('\n'))}</textarea></div>
       <div class="field full"><label>Excerpt (shown on listings)</label><textarea id="a-excerpt" rows="2">${esc(data.excerpt)}</textarea></div>
       <div class="field full"><label>Body (use blank lines for paragraphs)</label><textarea id="a-body" rows="10">${esc(data.body)}</textarea></div>
     </div>
@@ -618,6 +624,7 @@ function saveArticle(id, isEdit) {
     author: document.getElementById('a-author').value.trim() || 'Vybe Studio',
     date: document.getElementById('a-date').value || new Date().toISOString().slice(0,10),
     body: document.getElementById('a-body').value,
+    images: (document.getElementById('a-imgs')?.value || '').split('\n').map(s=>s.trim()).filter(Boolean),
   };
   if (isEdit) { const i = DATA.articles.findIndex(a => a.id === id); DATA.articles[i] = obj; }
   else DATA.articles.unshift(obj);
@@ -726,6 +733,29 @@ function renderSettings(main) {
       <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="saveBrand()">Save Brand</button></div>
     </div>
     <div class="card">
+      <div class="card-head"><h3>Logo</h3><span class="small">Customize for festivals & seasons</span></div>
+      <p class="muted small" style="margin-bottom:16px;">The site logo reads "<strong>${esc(c.logoEmojiBefore||'')}${esc(c.logoMain||'Vybe')}${esc(c.logoEmojiAfter||'')}</strong> <em>${esc(c.logoSub||'Co.')}</em>". Tap a festival preset, then Save.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px;">
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('default')">Default</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('christmas')">🎄 Christmas</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('diwali')">🪔 Diwali</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('eid')">🌙 Eid</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('pride')">🌈 Pride</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('valentines')">💕 Valentine's</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('halloween')">🎃 Halloween</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('newyear')">✨ New Year</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('summer')">☀️ Summer</button>
+        <button class="btn btn-outline btn-sm" onclick="applyLogoPreset('holi')">🎨 Holi</button>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Logo main text</label><input id="lg-main" value="${esc(c.logoMain||'Vybe')}" placeholder="Vybe" /></div>
+        <div class="field"><label>Logo sub text</label><input id="lg-sub" value="${esc(c.logoSub||'Co.')}" placeholder="Co." /></div>
+        <div class="field"><label>Emoji / icon before</label><input id="lg-before" value="${esc(c.logoEmojiBefore||'')}" placeholder="🎄 / 🪔 / ✨" /></div>
+        <div class="field"><label>Emoji / icon after</label><input id="lg-after" value="${esc(c.logoEmojiAfter||'')}" placeholder="optional" /></div>
+      </div>
+      <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="saveLogo()">Save Logo</button></div>
+    </div>
+    <div class="card">
       <div class="card-head"><h3>Owner password</h3><span class="small">Used to sign in to Studio</span></div>
       <div class="form-grid">
         <div class="field full"><label>Password</label><input id="s-pass" type="text" value="${esc(DATA.adminPassword)}" /><span class="hint">Visible so you can copy it. Choose something memorable.</span></div>
@@ -759,6 +789,43 @@ function savePassword() {
   const v = document.getElementById('s-pass').value.trim();
   if (!v) { toast('Password cannot be empty'); return; }
   DATA.adminPassword = v; saveData(DATA); toast('Password updated');
+}
+const LOGO_PRESETS = {
+  default:    { before: '', after: '' },
+  christmas:  { before: '🎄', after: '' },
+  diwali:     { before: '🪔', after: '' },
+  eid:        { before: '🌙', after: '' },
+  pride:      { before: '🌈', after: '' },
+  valentines: { before: '💕', after: '' },
+  halloween:  { before: '🎃', after: '' },
+  newyear:    { before: '✨', after: '' },
+  summer:     { before: '☀️', after: '' },
+  holi:       { before: '🎨', after: '' },
+};
+function applyLogoPreset(name) {
+  const p = LOGO_PRESETS[name]; if (!p) return;
+  document.getElementById('lg-before').value = p.before;
+  document.getElementById('lg-after').value  = p.after;
+}
+function saveLogo() {
+  DATA.config.logoMain = document.getElementById('lg-main').value.trim() || 'Vybe';
+  DATA.config.logoSub  = document.getElementById('lg-sub').value.trim()  || 'Co.';
+  DATA.config.logoEmojiBefore = document.getElementById('lg-before').value;
+  DATA.config.logoEmojiAfter  = document.getElementById('lg-after').value;
+  saveData(DATA); toast('Logo saved'); applyAdminBranding(); renderTab();
+}
+function applyAdminBranding() {
+  const c = DATA.config || {};
+  const main = c.logoMain || 'Vybe';
+  const sub  = c.logoSub  || 'Co.';
+  const before = c.logoEmojiBefore || '';
+  const after  = c.logoEmojiAfter  || '';
+  document.querySelectorAll('.brand-mark').forEach(el => {
+    const vy = el.querySelector('.vy');
+    const co = el.querySelector('.co');
+    if (vy) vy.textContent = before + main + after;
+    if (co) co.textContent = sub;
+  });
 }
 function exportData() {
   const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
