@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vybe Co. — Studio (Owner)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root{
+    --bg: #FBFAF7; --bg-soft: #F4F1EC; --panel: #FFFFFF;
+    --ink: #1A1A1A; --ink-soft: #4A4845; --muted: #9C9892;
+    --line: #E8E4DE; --accent: #B8A998;
+    --serif: 'Cormorant Garamond', Georgia, serif;
+    --sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    --script: 'Allura', cursive;
+    --ease: cubic-bezier(.2,.6,.2,1);
+    --good: #4a7a4e; --warn: #8a4a2e; --bad: #b04444;
+  }
+  html, body { background: var(--bg-soft); color: var(--ink); font-family: var(--sans); font-weight: 300; line-height: 1.55; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  img { max-width: 100%; display: block; }
+  a { color: inherit; text-decoration: none; }
+  button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }
+  input, textarea, select { font-family: inherit; font-size: 14px; color: var(--ink); }
+  h1, h2, h3, h4 { font-family: var(--serif); font-weight: 400; letter-spacing: -.01em; line-height: 1.1; }
+  ::selection { background: var(--ink); color: var(--bg); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-track { background: var(--bg-soft); }
+  ::-webkit-scrollbar-thumb { background: var(--line); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+  .brand-mark { display: inline-flex; align-items: flex-end; gap: 4px; color: var(--ink); text-decoration: none; line-height: 1; }
+  .brand-mark .vy { font-family: 'Allura', cursive; font-size: 46px; line-height: .8; letter-spacing: -.01em; }
+  .brand-mark .co { font-family: 'Cormorant Garamond', serif; font-size: 12px; letter-spacing: .08em; color: var(--ink-soft); margin-bottom: 9px; margin-left: 2px; }
+  .brand-mark.invert { color: var(--bg); }
+  .brand-mark.invert .co { color: rgba(251,250,247,.65); }
+  .brand-mark.xl .vy { font-size: 112px; }
+  .brand-mark.xl .co { font-size: 24px; margin-bottom: 22px; margin-left: 4px; }
+
+  .login-screen { min-height: 100vh; display: grid; grid-template-columns: 1fr 1fr; background: var(--bg); }
+  .login-art { background: linear-gradient(135deg, #F4F1EC 0%, #E0D5C5 100%); position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 64px; }
+  .login-art::before { content: ''; position: absolute; inset: 0; background-image: radial-gradient(circle at 20% 30%, rgba(184,169,152,.3), transparent 40%), radial-gradient(circle at 80% 70%, rgba(184,169,152,.2), transparent 50%); }
+  .login-art-content { position: relative; z-index: 1; text-align: center; }
+  .login-art .eyebrow { font-size: 11px; letter-spacing: .28em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 24px; }
+  .login-art h2 { font-family: var(--serif); font-style: italic; font-size: 36px; max-width: 420px; color: var(--ink); line-height: 1.3; margin-top: 40px; }
+  .login-form-wrap { display: flex; align-items: center; justify-content: center; padding: 64px; }
+  .login-card { width: 100%; max-width: 380px; }
+  .login-card h1 { font-size: 40px; margin-bottom: 8px; }
+  .login-card p { color: var(--ink-soft); margin-bottom: 36px; font-size: 14px; }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 18px; }
+  .field label { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-soft); }
+  .field input, .field textarea, .field select { padding: 13px 14px; border: 1px solid var(--line); background: var(--panel); font-size: 14px; transition: border-color .2s; outline: none; }
+  .field input:focus, .field textarea:focus, .field select:focus { border-color: var(--ink); }
+  .field textarea { resize: vertical; min-height: 100px; font-family: inherit; line-height: 1.5; }
+  .field .hint { font-size: 11px; color: var(--muted); }
+  .field.full { grid-column: span 2; }
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .form-grid { grid-template-columns: 1fr; } .field.full { grid-column: span 1; } }
+  @media (max-width: 900px) { .login-screen { grid-template-columns: 1fr; } .login-art { display: none; } }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px 28px; font-size: 11px; letter-spacing: .22em; text-transform: uppercase; font-weight: 500; transition: all .25s var(--ease); cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
+  .btn-primary { background: var(--ink); color: var(--bg); }
+  .btn-primary:hover { background: var(--ink-soft); }
+  .btn-outline { border-color: var(--line); color: var(--ink); background: var(--panel); }
+  .btn-outline:hover { border-color: var(--ink); }
+  .btn-sm { padding: 10px 16px; font-size: 10px; letter-spacing: .18em; }
+  .btn-danger { color: var(--bad); border: 1px solid #e8c4c4; background: var(--panel); }
+  .btn-danger:hover { background: var(--bad); color: #fff; border-color: var(--bad); }
+
+  .app { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 64px 1fr; grid-template-areas: "side topbar" "side main"; min-height: 100vh; }
+  .topbar { grid-area: topbar; background: var(--panel); border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; padding: 0 32px; position: sticky; top: 0; z-index: 30; }
+  .topbar-left { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+  .topbar-right { display: flex; align-items: center; gap: 16px; }
+  .topbar-right .live-status { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); padding-right: 16px; border-right: 1px solid var(--line); }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+
+  .sidebar { grid-area: side; background: var(--ink); color: var(--bg); padding: 24px 0; display: flex; flex-direction: column; gap: 2px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
+  .sidebar-brand { padding: 0 24px 24px; border-bottom: 1px solid rgba(255,255,255,.08); margin-bottom: 20px; }
+  .sidebar-section-label { padding: 16px 24px 8px; font-size: 10px; letter-spacing: .24em; text-transform: uppercase; color: rgba(251,250,247,.4); }
+  .nav-item { padding: 12px 24px; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; cursor: pointer; color: rgba(251,250,247,.62); transition: all .2s var(--ease); border-left: 2px solid transparent; display: flex; align-items: center; gap: 12px; }
+  .nav-item:hover { color: var(--bg); background: rgba(255,255,255,.03); }
+  .nav-item.active { color: var(--bg); border-left-color: var(--accent); background: rgba(255,255,255,.05); }
+  .nav-item svg { flex-shrink: 0; opacity: .7; }
+  .nav-item.active svg { opacity: 1; }
+  .sidebar-foot { margin-top: auto; padding: 16px 0; border-top: 1px solid rgba(255,255,255,.08); }
+
+  .main { grid-area: main; padding: 48px; overflow-x: auto; background: var(--bg-soft); }
+  @media (max-width: 1024px) {
+    .app { grid-template-columns: 72px 1fr; }
+    .nav-item span.label { display: none; }
+    .nav-item { justify-content: center; padding: 16px 0; }
+    .sidebar-brand { padding: 0 12px 16px; text-align: center; }
+    .sidebar-brand .brand-mark .vy { font-size: 32px; }
+    .sidebar-brand .brand-mark .co { font-size: 9px; margin-bottom: 6px; }
+    .sidebar-section-label { display: none; }
+    .main { padding: 32px 24px; }
+  }
+  @media (max-width: 640px) {
+    .app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr; grid-template-areas: "topbar" "side" "main"; }
+    .sidebar { position: static; height: auto; flex-direction: row; overflow-x: auto; padding: 12px; gap: 0; }
+    .sidebar-brand, .sidebar-section-label, .sidebar-foot { display: none; }
+    .nav-item { white-space: nowrap; }
+  }
+
+  .page-head { display: flex; justify-content: space-between; align-items: end; margin-bottom: 32px; gap: 24px; flex-wrap: wrap; }
+  .page-head h1 { font-size: clamp(32px, 4vw, 48px); }
+  .page-head .eyebrow { font-size: 11px; letter-spacing: .24em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 8px; display: block; }
+  .page-head-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); padding: 28px; margin-bottom: 16px; }
+  .card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; gap: 16px; flex-wrap: wrap; }
+  .card-head h3 { font-size: 22px; }
+  .card-head .small { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); padding: 24px; transition: transform .25s var(--ease), box-shadow .25s var(--ease); }
+  .stat:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,.04); }
+  .stat .lbl { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .stat .num { font-family: var(--serif); font-size: 42px; line-height: 1; }
+  .stat .delta { font-size: 12px; color: var(--ink-soft); margin-top: 8px; }
+  .stat.warn .num { color: var(--warn); }
+  .stat.bad .num { color: var(--bad); }
+
+  table.tbl { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); }
+  table.tbl th, table.tbl td { padding: 14px 16px; text-align: left; border-bottom: 1px solid var(--line); font-size: 13px; vertical-align: middle; }
+  table.tbl th { font-size: 10px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); font-weight: 500; background: var(--bg-soft); }
+  table.tbl tr:last-child td { border-bottom: none; }
+  table.tbl tbody tr:hover { background: var(--bg-soft); }
+  table.tbl .thumb { width: 48px; height: 60px; object-fit: cover; background: var(--bg-soft); }
+  .row-actions { display: flex; gap: 6px; }
+  .row-actions button { padding: 6px 10px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); background: var(--panel); transition: all .2s; }
+  .row-actions button:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .row-actions button.del:hover { background: var(--bad); border-color: var(--bad); color: #fff; }
+  .stock-edit { width: 70px; padding: 6px 10px; border: 1px solid var(--line); text-align: center; background: var(--panel); font-size: 13px; }
+  .stock-edit:focus { outline: none; border-color: var(--ink); }
+  .pill { display: inline-block; font-size: 9px; letter-spacing: .18em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--line); color: var(--ink-soft); }
+  .pill.warn { color: var(--warn); border-color: #ddc8b8; background: #faf3eb; }
+  .pill.bad { color: var(--bad); border-color: #e8c4c4; background: #fbf0f0; }
+  .pill.good { color: var(--good); border-color: #c8d8c8; background: #f0f5f0; }
+  .pill.featured { color: var(--accent); border-color: var(--accent); }
+
+  .empty { text-align: center; padding: 80px 24px; color: var(--muted); background: var(--panel); border: 1px dashed var(--line); }
+  .empty .script { font-family: var(--script); font-size: 64px; color: var(--accent); line-height: 1; margin-bottom: 16px; }
+
+  .modal { position: fixed; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center; padding: 24px; }
+  .modal.open { display: flex; animation: fadeIn .25s var(--ease); }
+  .modal-overlay { position: absolute; inset: 0; background: rgba(0,0,0,.5); }
+  .modal-content { position: relative; background: var(--panel); max-width: 720px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 40px; border: 1px solid var(--line); }
+  .modal-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .modal-head h2 { font-size: 28px; }
+  .modal-actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line); }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .icon-btn { width: 36px; height: 36px; display: inline-flex; align-items: center; justify-content: center; transition: opacity .2s; }
+  .icon-btn:hover { opacity: .65; }
+
+  .toast { position: fixed; bottom: 32px; right: 32px; background: var(--ink); color: var(--bg); padding: 14px 24px; font-size: 12px; letter-spacing: .18em; text-transform: uppercase; opacity: 0; pointer-events: none; transform: translateY(20px); transition: all .3s var(--ease); z-index: 300; }
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  .featured-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  .featured-tile { cursor: pointer; transition: transform .2s; }
+  .featured-tile:hover { transform: translateY(-2px); }
+  .featured-tile-img { position: relative; aspect-ratio: 3/4; overflow: hidden; background: var(--bg-soft); border: 2px solid transparent; transition: border-color .2s; }
+  .featured-tile.on .featured-tile-img { border-color: var(--ink); }
+  .featured-tile.on .featured-tile-img::after { content: '★'; position: absolute; top: 8px; right: 10px; color: var(--accent); font-size: 16px; }
+  .featured-tile img { width: 100%; height: 100%; object-fit: cover; }
+  .featured-tile:not(.on) img { opacity: .45; }
+  .featured-tile .nm { font-size: 11px; margin-top: 6px; font-family: var(--serif); color: var(--ink-soft); }
+
+  .looks-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
+  .look-card { background: var(--panel); border: 1px solid var(--line); overflow: hidden; }
+  .look-collage { aspect-ratio: 1; background: linear-gradient(135deg, #F4F1EC 0%, #E8E0D4 100%); position: relative; display: flex; flex-wrap: wrap; padding: 14px; gap: 8px; align-content: flex-start; }
+  .look-collage img { width: calc(50% - 4px); aspect-ratio: 3/4; object-fit: cover; background: var(--panel); }
+  .look-card .body { padding: 16px; }
+  .look-card .body .nm { font-family: var(--serif); font-size: 18px; margin-bottom: 4px; }
+  .look-card .body .meta { font-size: 11px; color: var(--muted); margin-bottom: 12px; }
+
+  .small { font-size: 12px; } .muted { color: var(--muted); } .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="loginRoot"></div>
+<div id="appRoot" class="hidden"></div>
+<div class="modal" id="modal"><div class="modal-overlay" onclick="closeModal()"></div><div class="modal-content" id="modalContent"></div></div>
+<div class="toast" id="toast"></div>
+<script>
+const LS_KEY = 'vybe_co_data_v1';
+const CUSTOMER_SITE = 'vybe-co.html';
+
+/* ============================================================
+   CLOUD SYNC — JSONBin.io (cross-device live sync)
+   Setup: see DEPLOY.md.  Leave blank to disable.
+============================================================ */
+const JSONBIN_BIN_ID  = '6a0c0e836877513b27970879';
+const JSONBIN_API_KEY = '$2a$10$R8LhhuVp/QKKBocwTCya5uoG5f/VmSJjgTZkoP70L2879aKlJbTZ6';
+const CLOUD_KEYS = ['config', 'products', 'categories', 'articles', 'coupons'];
+const CLOUD_ON   = () => !!(JSONBIN_BIN_ID && JSONBIN_API_KEY);
+function cloudSubset(d){ const o={}; for(const k of CLOUD_KEYS) if(d[k]!==undefined) o[k]=d[k]; return o; }
+async function cloudFetch(){
+  if(!JSONBIN_BIN_ID) return null;
+  try{
+    const h = JSONBIN_API_KEY ? {'X-Master-Key':JSONBIN_API_KEY} : {};
+    const r = await fetch('https://api.jsonbin.io/v3/b/'+JSONBIN_BIN_ID+'/latest', { headers: h });
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const j = await r.json(); return j.record || null;
+  }catch(e){ console.warn('[cloud] fetch failed:', e); return null; }
+}
+let _pushT = null;
+function cloudPush(d){
+  if(!CLOUD_ON()) return;
+  clearTimeout(_pushT);
+  _pushT = setTimeout(async () => {
+    const dot = document.getElementById('cloudDot');
+    try{
+      const r = await fetch('https://api.jsonbin.io/v3/b/'+JSONBIN_BIN_ID, {
+        method:'PUT',
+        headers:{'Content-Type':'application/json','X-Master-Key':JSONBIN_API_KEY},
+        body: JSON.stringify(cloudSubset(d))
+      });
+      if(!r.ok) throw new Error('HTTP '+r.status);
+      if(dot){ dot.style.background='var(--good)'; dot.title='Cloud synced '+new Date().toLocaleTimeString(); }
+    }catch(e){
+      console.warn('[cloud] push failed:', e);
+      if(dot){ dot.style.background='var(--bad)'; dot.title='Push failed: '+e.message; }
+    }
+  }, 700);
+}
+
+
+const SEED = {
+  config: {
+    siteName: 'Vybe Co.',
+    tagline: 'Curated pieces. Endless vybes.',
+    heroEyebrow: 'Spring / Summer 2026',
+    heroHeading: 'Pieces that\nstart conversations.',
+    heroLead: 'A considered wardrobe of versatile, timeless silhouettes — designed in small batches and made to be styled, restyled, and lived in.',
+    heroImage: 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=1200&q=80&auto=format&fit=crop',
+    heroCaption: 'The Linen Edit — May 2026',
+    aboutTitle: 'A boutique\nbuilt on instinct.',
+    aboutText: 'Vybe Co. began as a small studio in 2023, born from a love of fabric, form, and the women who wear clothes like they mean it.',
+    aboutImage: 'https://images.unsplash.com/photo-1558769132-cb1aea458c5e?w=900&q=80&auto=format&fit=crop',
+    marqueeText: 'Free shipping over $150 · Studio-curated · Designed in small batches · Made to last',
+    footerTagline: 'Curated pieces, made to be styled and restyled.',
+    instagram: '@vybe.co',
+    email: 'hello@vybeco.studio',
+  },
+  adminPassword: 'vybe2026',
+  categories: [], products: [], articles: [], cart: [], savedLooks: [],
+};
+
+function loadData() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    if (!raw) { localStorage.setItem(LS_KEY, JSON.stringify(SEED)); return JSON.parse(JSON.stringify(SEED)); }
+    return JSON.parse(raw);
+  } catch (e) { return JSON.parse(JSON.stringify(SEED)); }
+}
+function saveData(d) { localStorage.setItem(LS_KEY, JSON.stringify(d)); cloudPush(d); }
+function uid(prefix) { return (prefix||'id') + '-' + Math.random().toString(36).slice(2,9); }
+function fmt(n) { return '$' + Number(n).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }); }
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+let DATA = loadData();
+let STATE = { authed: sessionStorage.getItem('vybe_owner_auth') === '1', tab: 'dashboard' };
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(window._toastT);
+  window._toastT = setTimeout(()=> el.classList.remove('show'), 2200);
+}
+function showModal(html) { document.getElementById('modalContent').innerHTML = html; document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+window.addEventListener('storage', (e) => { if (e.key === LS_KEY) { DATA = loadData(); if (STATE.authed) renderApp(); } });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+function renderLogin() {
+  document.getElementById('loginRoot').innerHTML = `
+    <div class="login-screen">
+      <div class="login-art">
+        <div class="login-art-content">
+          <span class="eyebrow">The Vybe Co. Studio</span>
+          <div class="brand-mark xl" style="margin-top:8px;"><span class="vy">Vybe</span><span class="co">Co.</span></div>
+          <h2>"Style is a way to say who you are without having to speak."</h2>
+        </div>
+      </div>
+      <div class="login-form-wrap">
+        <div class="login-card">
+          <span style="font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted);">Owner access</span>
+          <h1 style="margin-top:8px;">Welcome back.</h1>
+          <p>Sign in to manage your boutique — pieces, articles, and the storefront.</p>
+          <div class="field"><label>Password</label><input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter') doLogin()" /><span class="hint">Default password: <strong>vybe2026</strong> (change it in Settings)</span></div>
+          <button class="btn btn-primary" style="width:100%;" onclick="doLogin()">Enter Studio</button>
+          <div style="margin-top:32px; text-align:center;"><a href="${CUSTOMER_SITE}" target="_blank" style="font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);">← View Storefront</a></div>
+        </div>
+      </div>
+    </div>`;
+  setTimeout(()=> document.getElementById('loginPass') && document.getElementById('loginPass').focus(), 100);
+}
+
+function doLogin() {
+  const pw = document.getElementById('loginPass').value;
+  if (pw === DATA.adminPassword) { STATE.authed = true; sessionStorage.setItem('vybe_owner_auth', '1'); init(); toast('Welcome back'); }
+  else { toast('Incorrect password'); }
+}
+function logout() {
+  STATE.authed = false; sessionStorage.removeItem('vybe_owner_auth');
+  document.getElementById('appRoot').classList.add('hidden');
+  document.getElementById('loginRoot').classList.remove('hidden');
+  renderLogin();
+}
+
+const NAV_GROUPS = [
+  { label: 'Overview', items: [
+    { id: 'dashboard', name: 'Dashboard', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>' },
+  ]},
+  { label: 'Catalog', items: [
+    { id: 'products', name: 'Pieces', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3l3 3h6l3-3v18H6V3z"/></svg>' },
+    { id: 'categories', name: 'Categories', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></svg>' },
+    { id: 'stock', name: 'Stock', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 7l9-4 9 4-9 4-9-4zM3 12l9 4 9-4M3 17l9 4 9-4"/></svg>' },
+  ]},
+  { label: 'Content', items: [
+    { id: 'articles', name: 'Journal', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h12a4 4 0 0 1 4 4v12H8a4 4 0 0 1-4-4V4z"/><path d="M8 8h8M8 12h6"/></svg>' },
+    { id: 'homepage', name: 'Homepage', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H10v7H5a1 1 0 0 1-1-1V11z"/></svg>' },
+    { id: 'looks', name: 'Saved Looks', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78L12 21l8.84-8.61a5.5 5.5 0 0 0 0-7.78z"/></svg>' },
+  ]},
+  { label: 'Studio', items: [
+    { id: 'settings', name: 'Settings', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><circle cx="12" cy="12" r="9"/></svg>' },
+  ]},
+];
+
+function renderApp() {
+  document.getElementById('loginRoot').classList.add('hidden');
+  const root = document.getElementById('appRoot');
+  root.classList.remove('hidden');
+  const breadcrumb = { dashboard: 'Dashboard', products: 'Catalog · Pieces', categories: 'Catalog · Categories', stock: 'Catalog · Stock', articles: 'Content · Journal', homepage: 'Content · Homepage', looks: 'Content · Saved Looks', settings: 'Studio · Settings' }[STATE.tab] || 'Studio';
+  root.innerHTML = `
+    <div class="app">
+      <aside class="sidebar">
+        <div class="sidebar-brand"><a href="#" class="brand-mark invert" onclick="STATE.tab='dashboard';renderApp();return false;"><span class="vy">Vybe</span><span class="co">Co.</span></a></div>
+        ${NAV_GROUPS.map(grp => `<div class="sidebar-section-label">${grp.label}</div>${grp.items.map(item => `<div class="nav-item ${STATE.tab === item.id ? 'active' : ''}" onclick="STATE.tab='${item.id}';renderApp()">${item.icon}<span class="label">${item.name}</span></div>`).join('')}`).join('')}
+        <div class="sidebar-foot"><div class="nav-item" onclick="logout()" style="color:rgba(251,250,247,.4);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="label">Sign Out</span></div></div>
+      </aside>
+      <header class="topbar">
+        <div class="topbar-left">${esc(breadcrumb)}</div>
+        <div class="topbar-right">
+          <span class="live-status"><span class="live-dot" id="cloudDot" title="Cloud sync status"></span>${JSONBIN_BIN_ID ? "Cloud live" : "Local only"}</span>
+          <a href="${CUSTOMER_SITE}" target="_blank" class="btn btn-outline btn-sm"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M15 3h6v6M10 14L21 3M21 14v5a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5"/></svg>View Live Site</a>
+        </div>
+      </header>
+      <main class="main" id="main"></main>
+    </div>`;
+  renderTab();
+}
+
+function renderTab() {
+  const main = document.getElementById('main');
+  if (!main) return;
+  switch (STATE.tab) {
+    case 'dashboard': return renderDashboard(main);
+    case 'products': return renderProducts(main);
+    case 'categories': return renderCategories(main);
+    case 'stock': return renderStock(main);
+    case 'articles': return renderArticles(main);
+    case 'homepage': return renderHomepage(main);
+    case 'looks': return renderLooks(main);
+    case 'settings': return renderSettings(main);
+  }
+}
+
+function renderDashboard(main) {
+  const totalProducts = DATA.products.length;
+  const totalStock = DATA.products.reduce((s,p)=> s + (p.stock || 0), 0);
+  const outOfStock = DATA.products.filter(p => p.stock <= 0).length;
+  const lowStock = DATA.products.filter(p => p.stock > 0 && p.stock <= 3).length;
+  const inventoryValue = DATA.products.reduce((s,p)=> s + (p.stock * (p.salePrice || p.price)), 0);
+  const cartUnits = DATA.cart.reduce((s,l)=> s + l.qty, 0);
+  const cartValue = DATA.cart.reduce((s,l)=>{ const p = DATA.products.find(x => x.id === l.productId); return s + (p ? (p.salePrice||p.price) * l.qty : 0); }, 0);
+  const lowList = DATA.products.filter(p => p.stock > 0 && p.stock <= 3);
+  const outList = DATA.products.filter(p => p.stock <= 0);
+  const now = new Date();
+  const dayStr = now.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
+  main.innerHTML = `
+    <div class="page-head">
+      <div><span class="eyebrow">${esc(dayStr)}</span><h1>Good ${now.getHours()<12?'morning':(now.getHours()<18?'afternoon':'evening')}.</h1></div>
+      <div class="page-head-actions">
+        <button class="btn btn-outline btn-sm" onclick="STATE.tab='articles';renderApp();openArticleModal()">+ Write Entry</button>
+        <button class="btn btn-primary btn-sm" onclick="STATE.tab='products';renderApp();openProductModal()">+ Add Piece</button>
+      </div>
+    </div>
+    <div class="stats-grid">
+      <div class="stat"><div class="lbl">Pieces in store</div><div class="num">${totalProducts}</div><div class="delta">${DATA.categories.length} categories</div></div>
+      <div class="stat"><div class="lbl">Units in stock</div><div class="num">${totalStock}</div><div class="delta">${fmt(inventoryValue)} value</div></div>
+      <div class="stat ${lowStock?'warn':''}"><div class="lbl">Low stock</div><div class="num">${lowStock}</div><div class="delta">${lowStock?'Restock soon':'All good'}</div></div>
+      <div class="stat ${outOfStock?'bad':''}"><div class="lbl">Sold out</div><div class="num">${outOfStock}</div><div class="delta">${outOfStock?'Bring back?':'Nothing missing'}</div></div>
+      <div class="stat"><div class="lbl">Active carts</div><div class="num">${cartUnits}</div><div class="delta">${fmt(cartValue)} pending</div></div>
+      <div class="stat"><div class="lbl">Journal entries</div><div class="num">${DATA.articles.length}</div><div class="delta">${DATA.savedLooks.length} saved looks</div></div>
+    </div>
+    ${lowList.length ? `
+      <div class="card">
+        <div class="card-head"><h3>Restock soon</h3><span class="small">${lowList.length} ${lowList.length===1?'piece':'pieces'} running low</span></div>
+        <table class="tbl"><thead><tr><th></th><th>Piece</th><th>Category</th><th>Stock</th><th></th></tr></thead>
+        <tbody>${lowList.map(p => { const cat = DATA.categories.find(c=>c.id===p.categoryId); return `<tr><td><img class="thumb" src="${esc(p.image)}"/></td><td><div style="font-family:var(--serif);font-size:15px;">${esc(p.name)}</div></td><td class="small muted">${esc(cat?cat.name:'—')}</td><td><span class="pill warn">${p.stock} left</span></td><td><button class="btn btn-outline btn-sm" onclick="quickStock('${p.id}')">Update</button></td></tr>`; }).join('')}</tbody></table>
+      </div>` : ''}
+    ${outList.length ? `
+      <div class="card">
+        <div class="card-head"><h3>Sold out — bring back?</h3><span class="small">${outList.length} ${outList.length===1?'piece':'pieces'}</span></div>
+        <table class="tbl"><thead><tr><th></th><th>Piece</th><th>Category</th><th></th></tr></thead>
+        <tbody>${outList.map(p => { const cat = DATA.categories.find(c=>c.id===p.categoryId); return `<tr><td><img class="thumb" src="${esc(p.image)}"/></td><td><div style="font-family:var(--serif);font-size:15px;">${esc(p.name)}</div></td><td class="small muted">${esc(cat?cat.name:'—')}</td><td><button class="btn btn-outline btn-sm" onclick="quickStock('${p.id}')">Add Stock</button></td></tr>`; }).join('')}</tbody></table>
+      </div>` : ''}
+    <div class="card">
+      <div class="card-head"><h3>Quick actions</h3></div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-primary btn-sm" onclick="STATE.tab='products';renderApp();openProductModal()">+ Add Piece</button>
+        <button class="btn btn-outline btn-sm" onclick="STATE.tab='articles';renderApp();openArticleModal()">+ Journal Entry</button>
+        <button class="btn btn-outline btn-sm" onclick="STATE.tab='categories';renderApp();openCategoryModal()">+ Category</button>
+        <button class="btn btn-outline btn-sm" onclick="STATE.tab='homepage';renderApp();">Edit Homepage</button>
+        <button class="btn btn-outline btn-sm" onclick="STATE.tab='stock';renderApp();">Manage Stock</button>
+      </div>
+    </div>`;
+}
+
+function quickStock(pid) {
+  const p = DATA.products.find(x => x.id === pid);
+  if (!p) return;
+  const v = prompt('Update stock for "' + p.name + '" (currently ' + p.stock + '):', p.stock);
+  if (v === null) return;
+  p.stock = Math.max(0, parseInt(v, 10) || 0);
+  saveData(DATA); toast('Stock set to ' + p.stock); renderTab();
+}
+
+function renderProducts(main) {
+  main.innerHTML = `
+    <div class="page-head">
+      <div><span class="eyebrow">Catalog</span><h1>Pieces</h1></div>
+      <div class="page-head-actions"><button class="btn btn-primary btn-sm" onclick="openProductModal()">+ Add Piece</button></div>
+    </div>
+    ${DATA.products.length ? `<table class="tbl">
+      <thead><tr><th></th><th>Name</th><th>Category</th><th>Price</th><th>Stock</th><th>Status</th><th></th></tr></thead>
+      <tbody>${DATA.products.map(p => {
+        const cat = DATA.categories.find(c=>c.id===p.categoryId);
+        const stockClass = p.stock <= 0 ? 'bad' : (p.stock <= 3 ? 'warn' : 'good');
+        return `<tr>
+          <td><img class="thumb" src="${esc(p.image)}" alt=""/></td>
+          <td><div style="font-family:var(--serif);font-size:16px;">${esc(p.name)}</div><div class="muted small">${p.featured ? '<span class="pill featured">★ Featured</span> ' : ''}${esc((p.description||'').slice(0,60))}${(p.description||'').length>60?'…':''}</div></td>
+          <td class="small">${esc(cat?cat.name:'—')}</td>
+          <td>${p.salePrice ? `<span style="text-decoration:line-through;color:var(--muted);">${fmt(p.price)}</span> <strong>${fmt(p.salePrice)}</strong>` : fmt(p.price)}</td>
+          <td><input class="stock-edit" type="number" min="0" value="${p.stock}" onchange="setProductStock('${p.id}', this.value)"/></td>
+          <td><span class="pill ${stockClass}">${p.stock <= 0 ? 'Out' : (p.stock <= 3 ? 'Low' : 'OK')}</span></td>
+          <td><div class="row-actions"><button onclick="openProductModal('${p.id}')">Edit</button><button class="del" onclick="deleteProduct('${p.id}')">Delete</button></div></td>
+        </tr>`;
+      }).join('')}</tbody></table>` : '<div class="empty"><div class="script">empty</div><p style="margin-bottom:20px;">No pieces yet — add your first.</p><button class="btn btn-primary btn-sm" onclick="openProductModal()">+ Add Piece</button></div>'}`;
+}
+
+function setProductStock(id, val) {
+  const p = DATA.products.find(x => x.id === id);
+  if (!p) return;
+  p.stock = Math.max(0, parseInt(val, 10) || 0);
+  saveData(DATA); toast('Stock updated');
+}
+
+function openProductModal(id) {
+  const p = id ? DATA.products.find(x => x.id === id) : null;
+  const isEdit = !!p;
+  const data = p || { id: uid('p'), name: '', categoryId: (DATA.categories[0] && DATA.categories[0].id) || '', price: '', salePrice: '', stock: 0, image: '', images: [], description: '', tags: [], featured: false };
+  showModal(`
+    <div class="modal-head"><h2>${isEdit ? 'Edit' : 'New'} piece</h2><button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="form-grid">
+      <div class="field full"><label>Name</label><input id="f-name" value="${esc(data.name)}" placeholder="e.g. The Sand Linen Shirt" /></div>
+      <div class="field"><label>Category</label><select id="f-cat">${DATA.categories.map(c => `<option value="${c.id}" ${c.id===data.categoryId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
+      <div class="field"><label>Stock</label><input id="f-stock" type="number" min="0" value="${data.stock}" /></div>
+      <div class="field"><label>Price (USD)</label><input id="f-price" type="number" step="1" value="${data.price}" /></div>
+      <div class="field"><label>Sale Price (optional)</label><input id="f-sale" type="number" step="1" value="${data.salePrice == null ? '' : data.salePrice}" /></div>
+      <div class="field full"><label>Main image URL</label><input id="f-img" value="${esc(data.image)}" placeholder="https://images.unsplash.com/..." /><span class="hint">Tip: paste any image URL — unsplash.com has free product photography.</span></div>
+      <div class="field full"><label>Additional images (one URL per line)</label><textarea id="f-imgs" rows="3">${esc((data.images || []).join('\n'))}</textarea></div>
+      <div class="field full"><label>Description</label><textarea id="f-desc" rows="4">${esc(data.description)}</textarea></div>
+      <div class="field"><label>Tags (comma separated)</label><input id="f-tags" value="${esc((data.tags||[]).join(', '))}" placeholder="new, bestseller, sale" /></div>
+      <div class="field"><label>Featured on homepage?</label><select id="f-feat"><option value="false" ${!data.featured?'selected':''}>No</option><option value="true" ${data.featured?'selected':''}>Yes</option></select></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button><button class="btn btn-primary btn-sm" onclick="saveProduct('${data.id}', ${isEdit})">${isEdit?'Save Changes':'Add Piece'}</button></div>`);
+}
+
+function saveProduct(id, isEdit) {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { toast('Name is required'); return; }
+  const obj = {
+    id, name,
+    categoryId: document.getElementById('f-cat').value,
+    stock: Math.max(0, parseInt(document.getElementById('f-stock').value, 10) || 0),
+    price: parseFloat(document.getElementById('f-price').value) || 0,
+    salePrice: document.getElementById('f-sale').value ? parseFloat(document.getElementById('f-sale').value) : null,
+    image: document.getElementById('f-img').value.trim() || 'https://images.unsplash.com/photo-1485518882345-15568b007407?w=800&q=80&auto=format&fit=crop',
+    images: document.getElementById('f-imgs').value.split('\n').map(s=>s.trim()).filter(Boolean),
+    description: document.getElementById('f-desc').value.trim(),
+    tags: document.getElementById('f-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
+    featured: document.getElementById('f-feat').value === 'true',
+  };
+  if (!obj.images.length) obj.images = [obj.image];
+  if (isEdit) { const i = DATA.products.findIndex(p => p.id === id); DATA.products[i] = obj; }
+  else DATA.products.push(obj);
+  saveData(DATA); closeModal(); toast(isEdit ? 'Piece updated' : 'Piece added'); renderTab();
+}
+
+function deleteProduct(id) {
+  const p = DATA.products.find(x => x.id === id);
+  if (!p) return;
+  if (!confirm('Delete "' + p.name + '"? This cannot be undone.')) return;
+  DATA.products = DATA.products.filter(x => x.id !== id);
+  DATA.cart = DATA.cart.filter(c => c.productId !== id);
+  saveData(DATA); toast('Piece deleted'); renderTab();
+}
+
+function renderCategories(main) {
+  main.innerHTML = `
+    <div class="page-head">
+      <div><span class="eyebrow">Catalog</span><h1>Categories</h1></div>
+      <div class="page-head-actions"><button class="btn btn-primary btn-sm" onclick="openCategoryModal()">+ Add Category</button></div>
+    </div>
+    ${DATA.categories.length ? `<table class="tbl">
+      <thead><tr><th></th><th>Name</th><th>Slug</th><th>Pieces</th><th></th></tr></thead>
+      <tbody>${DATA.categories.map(c => { const count = DATA.products.filter(p => p.categoryId === c.id).length; return `<tr><td><img class="thumb" src="${esc(c.image)}" alt=""/></td><td><div style="font-family:var(--serif);font-size:16px;">${esc(c.name)}</div></td><td class="small muted">/${esc(c.slug)}</td><td>${count}</td><td><div class="row-actions"><button onclick="openCategoryModal('${c.id}')">Edit</button><button class="del" onclick="deleteCategory('${c.id}')">Delete</button></div></td></tr>`; }).join('')}</tbody></table>` : '<div class="empty"><div class="script">none</div><p style="margin-bottom:20px;">No categories yet.</p><button class="btn btn-primary btn-sm" onclick="openCategoryModal()">+ Add Category</button></div>'}`;
+}
+
+function openCategoryModal(id) {
+  const c = id ? DATA.categories.find(x => x.id === id) : null;
+  const isEdit = !!c;
+  const data = c || { id: uid('cat'), name: '', slug: '', image: '' };
+  showModal(`
+    <div class="modal-head"><h2>${isEdit?'Edit':'New'} category</h2><button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="form-grid">
+      <div class="field"><label>Name</label><input id="c-name" value="${esc(data.name)}" placeholder="e.g. Knitwear" oninput="document.getElementById('c-slug').value=this.value.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')"/></div>
+      <div class="field"><label>Slug (URL)</label><input id="c-slug" value="${esc(data.slug)}" placeholder="knitwear"/></div>
+      <div class="field full"><label>Image URL</label><input id="c-img" value="${esc(data.image)}" placeholder="https://..." /></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button><button class="btn btn-primary btn-sm" onclick="saveCategory('${data.id}', ${isEdit})">${isEdit?'Save Changes':'Add Category'}</button></div>`);
+}
+
+function saveCategory(id, isEdit) {
+  const name = document.getElementById('c-name').value.trim();
+  if (!name) { toast('Name is required'); return; }
+  const slug = document.getElementById('c-slug').value.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+  const image = document.getElementById('c-img').value.trim() || 'https://images.unsplash.com/photo-1485518882345-15568b007407?w=800&q=80&auto=format&fit=crop';
+  if (isEdit) { const i = DATA.categories.findIndex(c => c.id === id); DATA.categories[i] = Object.assign({}, DATA.categories[i], { name, slug, image }); }
+  else DATA.categories.push({ id, name, slug, image });
+  saveData(DATA); closeModal(); toast(isEdit ? 'Category updated' : 'Category added'); renderTab();
+}
+
+function deleteCategory(id) {
+  const c = DATA.categories.find(x => x.id === id);
+  if (!c) return;
+  const linked = DATA.products.filter(p => p.categoryId === id);
+  if (linked.length) { if (!confirm('This category has ' + linked.length + ' piece' + (linked.length===1?'':'s') + ' linked. They will be reassigned. Continue?')) return; }
+  else { if (!confirm('Delete category "' + c.name + '"?')) return; }
+  DATA.categories = DATA.categories.filter(x => x.id !== id);
+  DATA.products.forEach(p => { if (p.categoryId === id) p.categoryId = (DATA.categories[0] && DATA.categories[0].id) || ''; });
+  saveData(DATA); toast('Category deleted'); renderTab();
+}
+
+function renderStock(main) {
+  const sorted = DATA.products.slice().sort((a,b) => a.stock - b.stock);
+  main.innerHTML = `
+    <div class="page-head">
+      <div><span class="eyebrow">Catalog</span><h1>Stock</h1></div>
+      <div class="page-head-actions">
+        <button class="btn btn-outline btn-sm" onclick="bulkAdjustStock(1)">+1 to all</button>
+        <button class="btn btn-outline btn-sm" onclick="bulkAdjustStock(-1)">−1 to all</button>
+      </div>
+    </div>
+    <p style="color:var(--ink-soft);margin-bottom:24px;max-width:600px;font-size:14px;">Inline stock control. Edits save instantly and go live on the storefront. Sorted by lowest stock first.</p>
+    ${sorted.length ? `<table class="tbl">
+      <thead><tr><th></th><th>Piece</th><th>Category</th><th>Stock</th><th>Status</th><th>Value</th></tr></thead>
+      <tbody>${sorted.map(p => { const cat = DATA.categories.find(c=>c.id===p.categoryId); const stockClass = p.stock <= 0 ? 'bad' : (p.stock <= 3 ? 'warn' : 'good'); const value = p.stock * (p.salePrice||p.price); return `<tr><td><img class="thumb" src="${esc(p.image)}"/></td><td><div style="font-family:var(--serif);font-size:15px;">${esc(p.name)}</div></td><td class="small muted">${esc(cat?cat.name:'—')}</td><td><input class="stock-edit" type="number" min="0" value="${p.stock}" onchange="setProductStock('${p.id}', this.value); renderTab();"/></td><td><span class="pill ${stockClass}">${p.stock <= 0 ? 'Out' : (p.stock <= 3 ? 'Low' : 'OK')}</span></td><td class="small">${fmt(value)}</td></tr>`; }).join('')}</tbody></table>` : '<div class="empty"><p>No pieces to stock.</p></div>'}`;
+}
+
+function bulkAdjustStock(delta) {
+  if (!confirm('Adjust stock of all ' + DATA.products.length + ' pieces by ' + (delta>0?'+':'') + delta + '?')) return;
+  DATA.products.forEach(p => { p.stock = Math.max(0, (p.stock || 0) + delta); });
+  saveData(DATA); toast('Stock updated'); renderTab();
+}
+
+function renderArticles(main) {
+  main.innerHTML = `
+    <div class="page-head">
+      <div><span class="eyebrow">Content</span><h1>Journal</h1></div>
+      <div class="page-head-actions"><button class="btn btn-primary btn-sm" onclick="openArticleModal()">+ Write Entry</button></div>
+    </div>
+    ${DATA.articles.length ? `<table class="tbl">
+      <thead><tr><th></th><th>Title</th><th>Author</th><th>Date</th><th></th></tr></thead>
+      <tbody>${DATA.articles.map(a => `<tr><td><img class="thumb" src="${esc(a.image)}" alt=""/></td><td><div style="font-family:var(--serif);font-size:16px;">${esc(a.title)}</div><div class="muted small">${esc((a.excerpt||'').slice(0,70))}${(a.excerpt||'').length>70?'…':''}</div></td><td class="small">${esc(a.author)}</td><td class="small muted">${esc(a.date)}</td><td><div class="row-actions"><button onclick="openArticleModal('${a.id}')">Edit</button><button class="del" onclick="deleteArticle('${a.id}')">Delete</button></div></td></tr>`).join('')}</tbody></table>` : '<div class="empty"><div class="script">unwritten</div><p style="margin-bottom:20px;">No journal entries yet.</p><button class="btn btn-primary btn-sm" onclick="openArticleModal()">+ Write Entry</button></div>'}`;
+}
+
+function openArticleModal(id) {
+  const a = id ? DATA.articles.find(x => x.id === id) : null;
+  const isEdit = !!a;
+  const data = a || { id: uid('a'), title: '', excerpt: '', image: '', author: 'Vybe Studio', date: new Date().toISOString().slice(0,10), body: '' };
+  showModal(`
+    <div class="modal-head"><h2>${isEdit?'Edit':'New'} journal entry</h2><button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="form-grid">
+      <div class="field full"><label>Title</label><input id="a-title" value="${esc(data.title)}" placeholder="Article title" /></div>
+      <div class="field"><label>Author</label><input id="a-author" value="${esc(data.author)}" /></div>
+      <div class="field"><label>Date</label><input id="a-date" type="date" value="${esc(data.date)}" /></div>
+      <div class="field full"><label>Cover image URL</label><input id="a-img" value="${esc(data.image)}" placeholder="https://..." /></div>
+      <div class="field full"><label>Excerpt (shown on listings)</label><textarea id="a-excerpt" rows="2">${esc(data.excerpt)}</textarea></div>
+      <div class="field full"><label>Body (use blank lines for paragraphs)</label><textarea id="a-body" rows="10">${esc(data.body)}</textarea></div>
+    </div>
+    <div class="modal-actions"><button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button><button class="btn btn-primary btn-sm" onclick="saveArticle('${data.id}', ${isEdit})">${isEdit?'Save Changes':'Publish'}</button></div>`);
+}
+
+function saveArticle(id, isEdit) {
+  const title = document.getElementById('a-title').value.trim();
+  if (!title) { toast('Title is required'); return; }
+  const obj = {
+    id, title,
+    excerpt: document.getElementById('a-excerpt').value.trim(),
+    image: document.getElementById('a-img').value.trim() || 'https://images.unsplash.com/photo-1490481651871-ab68de25d43d?w=900&q=80&auto=format&fit=crop',
+    author: document.getElementById('a-author').value.trim() || 'Vybe Studio',
+    date: document.getElementById('a-date').value || new Date().toISOString().slice(0,10),
+    body: document.getElementById('a-body').value,
+  };
+  if (isEdit) { const i = DATA.articles.findIndex(a => a.id === id); DATA.articles[i] = obj; }
+  else DATA.articles.unshift(obj);
+  saveData(DATA); closeModal(); toast(isEdit ? 'Entry updated' : 'Entry published'); renderTab();
+}
+
+function deleteArticle(id) {
+  if (!confirm('Delete this entry?')) return;
+  DATA.articles = DATA.articles.filter(x => x.id !== id);
+  saveData(DATA); toast('Entry deleted'); renderTab();
+}
+
+function renderHomepage(main) {
+  const c = DATA.config;
+  main.innerHTML = `
+    <div class="page-head">
+      <div><span class="eyebrow">Content</span><h1>Homepage</h1></div>
+      <div class="page-head-actions">
+        <a href="${CUSTOMER_SITE}" target="_blank" class="btn btn-outline btn-sm">Preview</a>
+        <button class="btn btn-primary btn-sm" onclick="saveHomepage()">Save Changes</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Hero section</h3><span class="small">Top of homepage</span></div>
+      <div class="form-grid">
+        <div class="field"><label>Eyebrow text</label><input id="h-eyebrow" value="${esc(c.heroEyebrow)}" /></div>
+        <div class="field"><label>Image caption</label><input id="h-caption" value="${esc(c.heroCaption)}" /></div>
+        <div class="field full"><label>Heading (use Enter for line break)</label><textarea id="h-heading" rows="2">${esc(c.heroHeading)}</textarea></div>
+        <div class="field full"><label>Lead paragraph</label><textarea id="h-lead" rows="3">${esc(c.heroLead)}</textarea></div>
+        <div class="field full"><label>Hero image URL</label><input id="h-image" value="${esc(c.heroImage)}" /></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Our Story section</h3></div>
+      <div class="form-grid">
+        <div class="field full"><label>Title (use Enter for line break)</label><textarea id="h-aboutTitle" rows="2">${esc(c.aboutTitle)}</textarea></div>
+        <div class="field full"><label>Text</label><textarea id="h-aboutText" rows="4">${esc(c.aboutText)}</textarea></div>
+        <div class="field full"><label>About image URL</label><input id="h-aboutImage" value="${esc(c.aboutImage)}" /></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Marquee &amp; footer</h3></div>
+      <div class="form-grid">
+        <div class="field full"><label>Scrolling marquee text</label><input id="h-marquee" value="${esc(c.marqueeText)}" /></div>
+        <div class="field full"><label>Footer tagline</label><textarea id="h-footTag" rows="2">${esc(c.footerTagline)}</textarea></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Featured pieces</h3><span class="small">Click to toggle which pieces show in "Featured" on homepage</span></div>
+      ${DATA.products.length ? `<div class="featured-grid">${DATA.products.map(p => `<div class="featured-tile ${p.featured?'on':''}" onclick="toggleFeatured('${p.id}')"><div class="featured-tile-img"><img src="${esc(p.image)}" /></div><div class="nm">${esc(p.name)}</div></div>`).join('')}</div>` : '<p class="muted small">No products yet — add some first.</p>'}
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;padding:24px 0;">
+      <a href="${CUSTOMER_SITE}" target="_blank" class="btn btn-outline btn-sm">Preview Site</a>
+      <button class="btn btn-primary btn-sm" onclick="saveHomepage()">Save Changes</button>
+    </div>`;
+}
+
+function toggleFeatured(pid) {
+  const p = DATA.products.find(x => x.id === pid);
+  if (!p) return;
+  p.featured = !p.featured;
+  saveData(DATA); toast(p.featured ? 'Now featured' : 'Removed from featured'); renderTab();
+}
+
+function saveHomepage() {
+  DATA.config.heroEyebrow = document.getElementById('h-eyebrow').value;
+  DATA.config.heroCaption = document.getElementById('h-caption').value;
+  DATA.config.heroHeading = document.getElementById('h-heading').value;
+  DATA.config.heroLead = document.getElementById('h-lead').value;
+  DATA.config.heroImage = document.getElementById('h-image').value;
+  DATA.config.aboutTitle = document.getElementById('h-aboutTitle').value;
+  DATA.config.aboutText = document.getElementById('h-aboutText').value;
+  DATA.config.aboutImage = document.getElementById('h-aboutImage').value;
+  DATA.config.marqueeText = document.getElementById('h-marquee').value;
+  DATA.config.footerTagline = document.getElementById('h-footTag').value;
+  saveData(DATA); toast('Homepage saved');
+}
+
+function renderLooks(main) {
+  main.innerHTML = `
+    <div class="page-head">
+      <div><span class="eyebrow">Content</span><h1>Saved customer looks</h1></div>
+      <div class="page-head-actions"><span class="small muted" style="align-self:center;">${DATA.savedLooks.length} ${DATA.savedLooks.length===1?'look':'looks'}</span></div>
+    </div>
+    ${DATA.savedLooks.length ? `<div class="looks-grid">${DATA.savedLooks.map(look => { const value = look.items.reduce((s,i)=>{ const p = DATA.products.find(x=>x.id===i.productId); return s + (p ? (p.salePrice||p.price) : 0); }, 0); return `<div class="look-card"><div class="look-collage">${look.items.slice(0,4).map(i => { const p = DATA.products.find(x=>x.id===i.productId); return p ? `<img src="${esc(p.image)}" />` : ''; }).join('')}</div><div class="body"><div class="nm">${esc(look.name)}</div><div class="meta">${look.items.length} pieces · ${fmt(value)}</div><button class="btn btn-outline btn-sm" style="width:100%;" onclick="deleteLook('${look.id}')">Delete Look</button></div></div>`; }).join('')}</div>` : '<div class="empty"><div class="script">none yet</div><p>When customers save outfits from the builder, they\'ll appear here.</p></div>'}`;
+}
+
+function deleteLook(id) {
+  if (!confirm('Delete this saved look?')) return;
+  DATA.savedLooks = DATA.savedLooks.filter(x => x.id !== id);
+  saveData(DATA); toast('Look deleted'); renderTab();
+}
+
+function renderSettings(main) {
+  const c = DATA.config;
+  main.innerHTML = `
+    <div class="page-head"><div><span class="eyebrow">Studio</span><h1>Settings</h1></div></div>
+    <div class="card">
+      <div class="card-head"><h3>Brand</h3></div>
+      <div class="form-grid">
+        <div class="field"><label>Store name</label><input id="s-name" value="${esc(c.siteName)}" /></div>
+        <div class="field"><label>Tagline</label><input id="s-tag" value="${esc(c.tagline)}" /></div>
+        <div class="field"><label>Contact email</label><input id="s-email" value="${esc(c.email)}" /></div>
+        <div class="field"><label>Instagram handle</label><input id="s-ig" value="${esc(c.instagram)}" /></div>
+      </div>
+      <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="saveBrand()">Save Brand</button></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Owner password</h3><span class="small">Used to sign in to Studio</span></div>
+      <div class="form-grid">
+        <div class="field full"><label>Password</label><input id="s-pass" type="text" value="${esc(DATA.adminPassword)}" /><span class="hint">Visible so you can copy it. Choose something memorable.</span></div>
+      </div>
+      <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="savePassword()">Update Password</button></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Data management</h3><span class="small">Backup, restore, or reset</span></div>
+      <p class="muted small" style="margin-bottom:16px;">All your store data is stored locally in this browser. Use Export to back up. Import lets you restore or move data between browsers.</p>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="exportData()">Export Data (JSON)</button>
+        <button class="btn btn-outline btn-sm" onclick="importDataPrompt()">Import Data</button>
+        <button class="btn btn-danger btn-sm" onclick="resetData()">Reset to Defaults</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Storefront link</h3></div>
+      <p class="muted small" style="margin-bottom:16px;">Open the live customer-facing site:</p>
+      <a href="${CUSTOMER_SITE}" target="_blank" class="btn btn-primary btn-sm">Open Storefront →</a>
+    </div>`;
+}
+
+function saveBrand() {
+  DATA.config.siteName = document.getElementById('s-name').value;
+  DATA.config.tagline = document.getElementById('s-tag').value;
+  DATA.config.email = document.getElementById('s-email').value;
+  DATA.config.instagram = document.getElementById('s-ig').value;
+  saveData(DATA); toast('Brand saved');
+}
+function savePassword() {
+  const v = document.getElementById('s-pass').value.trim();
+  if (!v) { toast('Password cannot be empty'); return; }
+  DATA.adminPassword = v; saveData(DATA); toast('Password updated');
+}
+function exportData() {
+  const blob = new Blob([JSON.stringify(DATA, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'vybe-co-data-' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(url); toast('Exported');
+}
+function importDataPrompt() {
+  const input = document.createElement('input');
+  input.type = 'file'; input.accept = 'application/json';
+  input.onchange = (e) => {
+    const file = e.target.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = (ev) => {
+      try {
+        const obj = JSON.parse(ev.target.result);
+        if (!obj.config || !Array.isArray(obj.products)) throw new Error('Invalid file');
+        if (!confirm('This will replace all current data. Continue?')) return;
+        DATA = obj; saveData(DATA); toast('Data imported'); renderTab();
+      } catch (err) { toast('Invalid JSON file'); }
+    };
+    r.readAsText(file);
+  };
+  input.click();
+}
+function resetData() {
+  if (!confirm('Reset ALL store data to defaults? This deletes your custom products, articles, and settings.')) return;
+  if (!confirm('Are you absolutely sure? This cannot be undone.')) return;
+  localStorage.removeItem(LS_KEY); DATA = loadData(); saveData(DATA); toast('Reset complete'); renderTab();
+}
+
+async function init() {
+  if (JSONBIN_BIN_ID) {
+    const remote = await cloudFetch();
+    if (remote) {
+      for (const k of CLOUD_KEYS) if (remote[k] !== undefined) DATA[k] = remote[k];
+      localStorage.setItem(LS_KEY, JSON.stringify(DATA));
+    }
+  }
+  if (STATE.authed) { document.getElementById('loginRoot').classList.add('hidden'); renderApp(); }
+  else { document.getElementById('appRoot').classList.add('hidden'); renderLogin(); }
+}
+init();
+</script>
+</body>
+</html>
