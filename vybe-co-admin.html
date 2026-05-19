@@ -266,6 +266,10 @@ const SEED = {
     logoSub: 'Co.',
     logoEmojiBefore: '',
     logoEmojiAfter: '',
+    taxRate: 0,
+    taxLabel: 'GST',
+    razorpayKey: '',
+    sizeOptions: ['XS','S','M','L','XL'],
     baseCurrency: 'USD',
     currencies: [
       { code: 'USD', symbol: '$',   rate: 1 },
@@ -289,6 +293,12 @@ function loadData() {
 }
 function saveData(d) { localStorage.setItem(LS_KEY, JSON.stringify(d)); cloudPush(d); }
 function uid(prefix) { return (prefix||'id') + '-' + Math.random().toString(36).slice(2,9); }
+function productHasVariants(p) { return p && Array.isArray(p.variants) && p.variants.length > 0; }
+function productTotalStock(p) {
+  if (!p) return 0;
+  if (productHasVariants(p)) return p.variants.reduce((s,v)=> s + (v.stock||0), 0);
+  return p.stock || 0;
+}
 function fmt(n) {
   const list = (DATA.config.currencies && DATA.config.currencies.length) ? DATA.config.currencies : [{code:'USD',symbol:'$',rate:1}];
   const base = DATA.config.baseCurrency || 'USD';
@@ -517,6 +527,9 @@ const NAV_GROUPS = [
   { label: 'Overview', items: [
     { id: 'dashboard', name: 'Dashboard', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>' },
   ]},
+  { label: 'Operations', items: [
+    { id: 'orders', name: 'Orders', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 7h12l-1.5 12h-9L6 7z"/><path d="M9 7V5a3 3 0 0 1 6 0v2"/></svg>' },
+  ]},
   { label: 'Catalog', items: [
     { id: 'products', name: 'Pieces', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3l3 3h6l3-3v18H6V3z"/></svg>' },
     { id: 'categories', name: 'Categories', icon: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="8" height="8"/><rect x="13" y="3" width="8" height="8"/><rect x="3" y="13" width="8" height="8"/><rect x="13" y="13" width="8" height="8"/></svg>' },
@@ -536,7 +549,7 @@ function renderApp() {
   document.getElementById('loginRoot').classList.add('hidden');
   const root = document.getElementById('appRoot');
   root.classList.remove('hidden');
-  const breadcrumb = { dashboard: 'Dashboard', products: 'Catalog · Pieces', categories: 'Catalog · Categories', stock: 'Catalog · Stock', articles: 'Content · Journal', homepage: 'Content · Homepage', looks: 'Content · Saved Looks', settings: 'Studio · Settings' }[STATE.tab] || 'Studio';
+  const breadcrumb = { dashboard: 'Dashboard', orders: 'Operations · Orders', products: 'Catalog · Pieces', categories: 'Catalog · Categories', stock: 'Catalog · Stock', articles: 'Content · Journal', homepage: 'Content · Homepage', looks: 'Content · Saved Looks', settings: 'Studio · Settings' }[STATE.tab] || 'Studio';
   root.innerHTML = `
     <div class="app">
       <aside class="sidebar">
@@ -562,6 +575,7 @@ function renderTab() {
   if (!main) return;
   switch (STATE.tab) {
     case 'dashboard': return renderDashboard(main);
+    case 'orders': return renderOrders(main);
     case 'products': return renderProducts(main);
     case 'categories': return renderCategories(main);
     case 'stock': return renderStock(main);
@@ -633,6 +647,93 @@ function quickStock(pid) {
   saveData(DATA); toast('Stock set to ' + p.stock); renderTab();
 }
 
+const ORDER_STATUSES = ['Confirmed','Packed','Shipped','Out for delivery','Delivered','Cancelled'];
+function renderOrders(main) {
+  const orders = (DATA.orders || []).slice().reverse();
+  const counts = ORDER_STATUSES.reduce((m,k)=>{m[k]=orders.filter(o=>o.status===k).length;return m;},{});
+  main.innerHTML = `
+    <div class="page-head">
+      <div><span class="eyebrow">Operations</span><h1>Orders</h1></div>
+    </div>
+    <div class="stats-grid">
+      ${ORDER_STATUSES.slice(0,5).map(st => `<div class="stat"><div class="lbl">${st}</div><div class="num">${counts[st]||0}</div></div>`).join('')}
+    </div>
+    ${orders.length ? `<table class="tbl">
+      <thead><tr><th>Order</th><th>Customer</th><th>Items</th><th>Total</th><th>Status</th><th></th></tr></thead>
+      <tbody>${orders.map(o => {
+        const u = (DATA.users||[]).find(x => x.id === o.userId);
+        return `<tr><td><div style="font-family:var(--serif);font-size:15px;">${esc(o.number)}</div><div class="small muted">${new Date(o.createdAt).toLocaleDateString()}</div></td>
+        <td><div>${esc(u ? (u.name||u.username) : 'Guest')}</div><div class="small muted">${esc(u ? u.phone : '')}</div></td>
+        <td>${o.items.reduce((s,i)=>s+i.qty,0)} pieces</td>
+        <td>${fmt(o.total)}</td>
+        <td><select onchange="updateOrderStatus('${o.id}', this.value)" style="padding:6px;border:1px solid var(--line);font-size:12px;">${ORDER_STATUSES.map(st=>`<option value="${st}" ${st===o.status?'selected':''}>${st}</option>`).join('')}</select></td>
+        <td><button class="btn btn-outline btn-sm" onclick="viewOrder('${o.id}')">View</button></td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table>` : '<div class="empty"><div class="script">no orders yet</div><p>Orders placed on the storefront will appear here.</p></div>'}
+  `;
+}
+function updateOrderStatus(id, status) {
+  const o = DATA.orders.find(x => x.id === id);
+  if (!o) return;
+  o.status = status;
+  o.statusUpdatedAt = new Date().toISOString();
+  saveData(DATA); toast('Status updated → ' + status);
+}
+function viewOrder(id) {
+  const o = DATA.orders.find(x => x.id === id); if (!o) return;
+  const u = (DATA.users||[]).find(x => x.id === o.userId);
+  const a = o.shippingAddress || {};
+  showModal(`
+    <div class="modal-head"><h2>${esc(o.number)}</h2><button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+      <div>
+        <div class="eyebrow" style="margin-bottom:10px;">Customer</div>
+        <div style="font-family:var(--serif);font-size:17px;">${esc(u ? (u.name||u.username) : 'Guest')}</div>
+        <div class="small muted">${esc(u?u.phone:'')}</div>
+        <div class="small muted">${esc(u?u.email:'')}</div>
+      </div>
+      <div>
+        <div class="eyebrow" style="margin-bottom:10px;">Ship to</div>
+        <div>${esc(a.recipient||'')}</div>
+        <div class="small">${esc(a.line1||'')}${a.line2 ? '<br>'+esc(a.line2) : ''}<br>${esc(a.city||'')}${a.region?', '+esc(a.region):''} ${esc(a.postal||'')}<br>${esc(a.country||'')}</div>
+        <div class="small muted" style="margin-top:6px;">${esc(a.phone||'')}</div>
+      </div>
+    </div>
+    <div class="form-grid" style="margin-top:24px;">
+      <div class="field"><label>Status</label><select id="ord-status">${ORDER_STATUSES.map(st=>`<option value="${st}" ${st===o.status?'selected':''}>${st}</option>`).join('')}</select></div>
+      <div class="field"><label>Tracking number</label><input id="ord-tracking" value="${esc(o.trackingNumber||'')}" placeholder="e.g. 1Z999AA10123456784" /></div>
+      <div class="field"><label>Courier</label><input id="ord-courier" value="${esc(o.courier||'')}" placeholder="Bluedart / DHL / etc" /></div>
+      <div class="field"><label>Tracking URL (optional)</label><input id="ord-trackurl" value="${esc(o.trackingUrl||'')}" /></div>
+    </div>
+    <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px;">
+      <div class="eyebrow" style="margin-bottom:10px;">Items</div>
+      ${o.items.map(i => `<div style="display:flex;gap:12px;padding:8px 0;border-bottom:1px solid var(--line);align-items:center;"><img src="${esc(i.image)}" style="width:48px;height:60px;object-fit:cover;"/><div style="flex:1;"><div style="font-family:var(--serif);">${esc(i.name)}</div><div class="small muted">Qty ${i.qty}${i.size?' · '+esc(i.size):''} · ${fmt(i.price)}</div></div></div>`).join('')}
+    </div>
+    <div style="margin-top:20px;border-top:1px solid var(--line);padding-top:20px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted small">Subtotal</span><span>${fmt(o.subtotal)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted small">Shipping</span><span>${fmt(o.shipping)}</span></div>
+      ${o.discount?`<div style="display:flex;justify-content:space-between;margin-bottom:4px;color:var(--accent);"><span class="muted small">Discount</span><span>− ${fmt(o.discount)}</span></div>`:''}
+      ${o.tax?`<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span class="muted small">Tax</span><span>${fmt(o.tax)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-family:var(--serif);font-size:20px;margin-top:8px;"><span>Total</span><span>${fmt(o.total)}</span></div>
+      <div class="small muted" style="margin-top:6px;">Payment: ${esc(o.paymentMode||'demo')} ${o.paymentId?'· '+esc(o.paymentId):''}</div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Close</button>
+      <button class="btn btn-primary btn-sm" onclick="saveOrderDetails('${o.id}')">Save Changes</button>
+    </div>
+  `);
+}
+function saveOrderDetails(id) {
+  const o = DATA.orders.find(x => x.id === id); if (!o) return;
+  o.status = document.getElementById('ord-status').value;
+  o.trackingNumber = document.getElementById('ord-tracking').value.trim();
+  o.courier = document.getElementById('ord-courier').value.trim();
+  o.trackingUrl = document.getElementById('ord-trackurl').value.trim();
+  o.statusUpdatedAt = new Date().toISOString();
+  saveData(DATA); closeModal(); toast('Order updated'); renderTab();
+}
+
 function renderProducts(main) {
   main.innerHTML = `
     <div class="page-head">
@@ -672,7 +773,18 @@ function openProductModal(id) {
     <div class="form-grid">
       <div class="field full"><label>Name</label><input id="f-name" value="${esc(data.name)}" placeholder="e.g. The Sand Linen Shirt" /></div>
       <div class="field"><label>Category</label><select id="f-cat">${DATA.categories.map(c => `<option value="${c.id}" ${c.id===data.categoryId?'selected':''}>${esc(c.name)}</option>`).join('')}</select></div>
-      <div class="field"><label>Stock</label><input id="f-stock" type="number" min="0" value="${data.stock}" /></div>
+      <div class="field"><label>Total stock (used when no sizes below)</label><input id="f-stock" type="number" min="0" value="${data.stock}" /></div>
+      <div class="field full">
+        <label>Size variants (optional — leave empty to use total stock above)</label>
+        <div id="variants-list" style="display:flex;flex-direction:column;gap:6px;padding:8px;border:1px solid var(--line);background:var(--bg-soft);">
+          ${(data.variants||[]).map((v,i) => `<div class="var-row" data-i="${i}" style="display:grid;grid-template-columns:80px 80px 1fr;gap:8px;align-items:center;"><input class="stock-edit" style="text-align:left;" value="${esc(v.size)}" placeholder="Size" data-field="size" /><input class="stock-edit" type="number" min="0" value="${v.stock}" data-field="stock" /><button type="button" class="btn btn-outline btn-sm" onclick="this.parentElement.remove()">Remove</button></div>`).join('')}
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap;">
+          <button type="button" class="btn btn-outline btn-sm" onclick="addVariantRow()">+ Add size</button>
+          <button type="button" class="btn btn-outline btn-sm" onclick="addStandardSizes()">+ Add XS/S/M/L/XL</button>
+        </div>
+        <span class="hint">When you add sizes, total stock above is ignored. Customers must pick a size.</span>
+      </div>
       <div class="field"><label>Price (USD)</label><input id="f-price" type="number" step="1" value="${data.price}" /></div>
       <div class="field"><label>Sale Price (optional)</label><input id="f-sale" type="number" step="1" value="${data.salePrice == null ? '' : data.salePrice}" /></div>
       ${imgUploadHTML('f-img', data.image, 'Main image', 'https://... or upload below')}
@@ -682,6 +794,31 @@ function openProductModal(id) {
       <div class="field"><label>Featured on homepage?</label><select id="f-feat"><option value="false" ${!data.featured?'selected':''}>No</option><option value="true" ${data.featured?'selected':''}>Yes</option></select></div>
     </div>
     <div class="modal-actions"><button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button><button class="btn btn-primary btn-sm" onclick="saveProduct('${data.id}', ${isEdit})">${isEdit?'Save Changes':'Add Piece'}</button></div>`);
+}
+
+function addVariantRow(size, stock) {
+  const list = document.getElementById('variants-list');
+  if (!list) return;
+  const i = list.children.length;
+  const div = document.createElement('div');
+  div.className = 'var-row';
+  div.dataset.i = i;
+  div.style.cssText = 'display:grid;grid-template-columns:80px 80px 1fr;gap:8px;align-items:center;';
+  div.innerHTML = `<input class="stock-edit" style="text-align:left;" value="${size||''}" placeholder="Size" data-field="size" /><input class="stock-edit" type="number" min="0" value="${stock||0}" data-field="stock" /><button type="button" class="btn btn-outline btn-sm" onclick="this.parentElement.remove()">Remove</button>`;
+  list.appendChild(div);
+}
+function addStandardSizes() {
+  ['XS','S','M','L','XL'].forEach(sz => addVariantRow(sz, 0));
+}
+function collectVariants() {
+  const rows = document.querySelectorAll('#variants-list .var-row');
+  const out = [];
+  rows.forEach(r => {
+    const size = r.querySelector('[data-field=size]').value.trim();
+    const stock = Math.max(0, parseInt(r.querySelector('[data-field=stock]').value, 10) || 0);
+    if (size) out.push({ size, stock });
+  });
+  return out;
 }
 
 function saveProduct(id, isEdit) {
@@ -698,7 +835,13 @@ function saveProduct(id, isEdit) {
     description: document.getElementById('f-desc').value.trim(),
     tags: document.getElementById('f-tags').value.split(',').map(s=>s.trim()).filter(Boolean),
     featured: document.getElementById('f-feat').value === 'true',
+    variants: collectVariants(),
   };
+  // preserve reviews if editing
+  if (isEdit) {
+    const cur = DATA.products.find(p => p.id === id);
+    if (cur && cur.reviews) obj.reviews = cur.reviews;
+  }
   if (!obj.images.length) obj.images = [obj.image];
   if (isEdit) { const i = DATA.products.findIndex(p => p.id === id); DATA.products[i] = obj; }
   else DATA.products.push(obj);
@@ -930,6 +1073,22 @@ function renderSettings(main) {
       <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="saveBrand()">Save Brand</button></div>
     </div>
     <div class="card">
+      <div class="card-head"><h3>Tax (GST/VAT)</h3><span class="small">Applied at checkout, after discount</span></div>
+      <div class="form-grid">
+        <div class="field"><label>Tax rate (%)</label><input id="tx-rate" type="number" step="0.5" value="${c.taxRate||0}" /></div>
+        <div class="field"><label>Tax label</label><input id="tx-label" value="${esc(c.taxLabel||'GST')}" placeholder="GST / VAT / Sales Tax" /></div>
+      </div>
+      <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="saveTax()">Save Tax Settings</button></div>
+    </div>
+    <div class="card">
+      <div class="card-head"><h3>Payments (Razorpay)</h3><span class="small">Leave blank for demo mode</span></div>
+      <p class="muted small" style="margin-bottom:12px;">Sign up at <a href="https://razorpay.com" target="_blank" style="text-decoration:underline;">razorpay.com</a> → Dashboard → Settings → API Keys → copy the Key ID (starts with <code>rzp_test_</code> or <code>rzp_live_</code>) and paste below. Without a key, "Place Order" works in demo mode (no real payment).</p>
+      <div class="form-grid">
+        <div class="field full"><label>Razorpay Key ID</label><input id="rz-key" value="${esc(c.razorpayKey||'')}" placeholder="rzp_test_..." /></div>
+      </div>
+      <div style="margin-top:8px;"><button class="btn btn-primary btn-sm" onclick="savePayments()">Save Payment Settings</button></div>
+    </div>
+    <div class="card">
       <div class="card-head"><h3>Currency</h3><span class="small">Base currency & customer rates</span></div>
       <p class="muted small" style="margin-bottom:16px;">Your stored prices are interpreted as the <strong>base currency</strong>. Customers can switch view to any enabled currency on the storefront — prices auto-convert using these rates.</p>
       <div class="form-grid" style="margin-bottom:16px;">
@@ -1054,6 +1213,15 @@ function saveCurrencies() {
   }
   DATA.config.baseCurrency = newBase;
   saveData(DATA); toast('Currency settings saved'); renderTab();
+}
+function saveTax() {
+  DATA.config.taxRate = parseFloat(document.getElementById('tx-rate').value) || 0;
+  DATA.config.taxLabel = document.getElementById('tx-label').value.trim() || 'GST';
+  saveData(DATA); toast('Tax saved');
+}
+function savePayments() {
+  DATA.config.razorpayKey = document.getElementById('rz-key').value.trim();
+  saveData(DATA); toast(DATA.config.razorpayKey ? 'Razorpay enabled' : 'Demo mode (no payment)');
 }
 function applyAdminBranding() {
   const c = DATA.config || {};
