@@ -46,17 +46,17 @@
 
   /* ---------- Header ---------- */
   header.site {
-    position: sticky; top: 0; z-index: 50; background: rgba(251, 250, 247, 0.95);
-    backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 50; background: rgba(251, 250, 247, 0.92);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(232, 228, 222, 0.5);
+    transition: all .4s var(--ease);
   }
-  .nav { display: grid; grid-template-columns: 1fr auto 1fr; grid-template-areas: "brand brand brand" "links . right"; align-items: center; padding: 24px 32px 8px; gap: 14px 24px; }
-  .nav > .brand-mark { grid-area: brand; justify-self: center; }
-  .nav > .nav-links { grid-area: links; justify-self: start; }
-  .nav > .nav-right { grid-area: right; justify-self: end; }
+  .nav { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 22px 40px 18px; gap: 24px; }
+  .nav > .brand-mark { justify-self: center; }
+  .nav > .nav-links { justify-self: start; }
+  .nav > .nav-right { justify-self: end; }
   @media (max-width: 900px) {
-    .nav { grid-template-areas: "links brand right"; padding: 14px 20px; gap: 12px; }
-    .nav > .brand-mark { justify-self: center; }
+    .nav { padding: 14px 20px; gap: 12px; }
   }
   .nav-links { display: flex; gap: 36px; align-items: center; }
   .nav-links a {
@@ -71,23 +71,26 @@
     display: inline-flex; align-items: flex-end; gap: 4px;
     color: var(--ink); text-decoration: none; padding: 4px 8px;
     line-height: 1;
+    transition: opacity .3s var(--ease);
   }
+  .brand-mark:hover { opacity: .78; }
+  .brand-mark img { transition: opacity .3s var(--ease); }
   .brand-mark .vy {
-    font-family: 'Allura', cursive; font-size: clamp(96px, 14vw, 168px); line-height: .85;
+    font-family: 'Allura', cursive; font-size: clamp(72px, 9vw, 120px); line-height: .85;
     font-weight: 400; letter-spacing: -.01em;
   }
   .brand-mark .co {
-    font-family: 'Cormorant Garamond', serif; font-size: clamp(18px, 1.8vw, 26px);
-    letter-spacing: .16em; font-style: normal; font-weight: 400;
-    color: var(--ink-soft); margin-bottom: clamp(22px, 2.6vw, 36px); margin-left: 4px; text-transform: lowercase;
+    font-family: 'Cormorant Garamond', serif; font-size: clamp(15px, 1.4vw, 20px);
+    letter-spacing: .18em; font-style: normal; font-weight: 400;
+    color: var(--ink-soft); margin-bottom: clamp(16px, 2vw, 26px); margin-left: 4px; text-transform: lowercase;
   }
   @media (max-width: 900px) {
-    .brand-mark .vy { font-size: 68px; }
-    .brand-mark .co { font-size: 14px; margin-bottom: 12px; }
+    .brand-mark .vy { font-size: 60px; }
+    .brand-mark .co { font-size: 13px; margin-bottom: 11px; }
   }
   @media (max-width: 640px) {
-    .brand-mark .vy { font-size: 56px; }
-    .brand-mark .co { font-size: 12px; margin-bottom: 10px; }
+    .brand-mark .vy { font-size: 48px; }
+    .brand-mark .co { font-size: 11px; margin-bottom: 8px; }
   }
   .brand-mark-lg .vy { font-size: 88px; }
   .brand-mark-lg .co { font-size: 18px; margin-bottom: 14px; margin-left: 4px; }
@@ -209,8 +212,8 @@
   footer.site ul a { font-size: 14px; opacity: .8; transition: opacity .2s; }
   footer.site ul a:hover { opacity: 1; }
   footer.site .foot-brand { display: inline-flex; align-items: flex-end; gap: 6px; line-height: 1; }
-  footer.site .foot-brand .vy { font-family: 'Allura', cursive; font-size: clamp(96px, 11vw, 144px); line-height: .85; }
-  footer.site .foot-brand .co { font-family: 'Cormorant Garamond', serif; font-size: clamp(20px, 1.8vw, 28px); letter-spacing: .18em; margin-bottom: clamp(20px, 2.4vw, 32px); opacity: .75; text-transform: lowercase; }
+  footer.site .foot-brand .vy { font-family: 'Allura', cursive; font-size: clamp(84px, 9vw, 124px); line-height: .85; }
+  footer.site .foot-brand .co { font-family: 'Cormorant Garamond', serif; font-size: clamp(18px, 1.6vw, 24px); letter-spacing: .18em; margin-bottom: clamp(16px, 2vw, 26px); opacity: .75; text-transform: lowercase; }
   footer.site .foot-tagline { margin-top: 16px; opacity: .7; max-width: 320px; line-height: 1.5; }
   footer.site .news input { background: transparent; border: none; border-bottom: 1px solid rgba(251,250,247,.3); color: var(--bg); padding: 12px 0; width: 100%; outline: none; font-size: 14px; }
   footer.site .news input::placeholder { color: rgba(251,250,247,.4); }
@@ -826,8 +829,13 @@ function applyBranding() {
     const isFoot = el.classList.contains('foot-brand');
     if (c.logoImage) {
       const isHeader = !isFoot && (el.closest('header.site') || el.closest('.drawer-head'));
-      const h = isFoot ? '112px' : (isHeader ? 'clamp(80px, 12vw, 140px)' : '64px');
-      el.innerHTML = `<img src="${c.logoImage}" alt="${main} ${sub}" style="height:${h};width:auto;max-height:200px;object-fit:contain;${isFoot?'filter:invert(1) brightness(1.2);':''}" />`;
+      const h = isFoot ? '120px' : (isHeader ? 'clamp(72px, 10vw, 128px)' : '60px');
+      // mix-blend-mode: multiply makes any white/cream background in the logo image
+      // disappear into the page color, so the image blends seamlessly (no visible frame).
+      const blend = isFoot
+        ? 'filter:invert(1) brightness(1.15);'         // dark footer: invert to white
+        : 'mix-blend-mode:multiply;';                  // light page: erase white bg
+      el.innerHTML = `<img src="${c.logoImage}" alt="${main} ${sub}" style="height:${h};width:auto;max-height:200px;object-fit:contain;${blend}" />`;
     } else {
       const vyTxt = before + main + after;
       el.innerHTML = '<span class="vy">'+vyTxt+'</span><span class="co">'+sub+'</span>';
