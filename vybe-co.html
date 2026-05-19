@@ -39,6 +39,38 @@
   .display-script { font-family: var(--script); font-size: clamp(72px, 12vw, 180px); line-height: .9; }
   .article-gallery { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; max-width: 900px; margin: 56px auto 24px; padding: 0 24px; }
   .article-gallery img { width:100%; aspect-ratio: 4/5; object-fit: cover; background: var(--bg-soft); }
+  .otp-display { background: var(--bg-soft); border: 1px solid var(--line); padding: 20px; margin: 20px 0; text-align: center; }
+  .otp-display .otp-label { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+  .otp-display .otp-code { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 400; letter-spacing: .4em; color: var(--ink); margin-left: .4em; }
+  .otp-display .otp-note { font-size: 11px; color: var(--ink-soft); margin-top: 12px; font-style: italic; }
+  .otp-input { letter-spacing: .5em; font-family: 'Cormorant Garamond', serif; font-size: 24px; text-align: center; padding: 14px !important; }
+  .phone-row { display: grid; grid-template-columns: 110px 1fr; gap: 8px; }
+  .phone-row select { padding: 13px 10px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; }
+  .addr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+  .addr-card { background: var(--bg-soft); border: 1px solid var(--line); padding: 20px; position: relative; }
+  .addr-card.default { border-color: var(--ink); }
+  .addr-card .addr-label { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 6px; }
+  .addr-card .addr-name { font-family: var(--serif); font-size: 17px; margin-bottom: 8px; }
+  .addr-card .addr-body { font-size: 13px; color: var(--ink-soft); line-height: 1.55; }
+  .addr-card .addr-default-pill { position: absolute; top: 16px; right: 16px; font-size: 9px; letter-spacing: .18em; text-transform: uppercase; padding: 3px 8px; border: 1px solid var(--ink); color: var(--ink); }
+  .addr-card .addr-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+  .addr-card .addr-actions button { padding: 6px 12px; font-size: 10px; letter-spacing: .14em; text-transform: uppercase; border: 1px solid var(--line); background: var(--bg); cursor: pointer; }
+  .addr-card .addr-actions button:hover { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .addr-select { width: 100%; padding: 12px 14px; border: 1px solid var(--line); background: var(--bg); font-size: 14px; margin-bottom: 12px; }
+  .size-row { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0 20px; }
+  .size-pill { padding: 10px 16px; border: 1px solid var(--line); background: var(--bg); cursor: pointer; font-size: 12px; letter-spacing: .14em; min-width: 50px; text-align: center; transition: all .2s; }
+  .size-pill:hover { border-color: var(--ink); }
+  .size-pill.selected { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .size-pill.out { opacity: .4; cursor: not-allowed; text-decoration: line-through; }
+  .size-guide-link { font-size: 11px; letter-spacing: .12em; text-transform: uppercase; text-decoration: underline; cursor: pointer; color: var(--ink-soft); }
+  .order-status-pill { display: inline-block; padding: 4px 10px; font-size: 9px; letter-spacing: .18em; text-transform: uppercase; border: 1px solid var(--line); }
+  .order-status-pill.confirmed { background: #faf3eb; border-color: #ddc8b8; color: #8a4a2e; }
+  .order-status-pill.packed { background: #f0f5f0; border-color: #c8d8c8; color: #4a7a4e; }
+  .order-status-pill.shipped { background: #e8f0fa; border-color: #b8c8e8; color: #2e4a8a; }
+  .order-status-pill.out { background: #fdf4d3; border-color: #e8d8a8; color: #8a6a2e; }
+  .order-status-pill.delivered { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+  .order-status-pill.cancelled { background: #fbf0f0; border-color: #e8c4c4; color: #b04444; }
+  .tracking-info { margin-top: 12px; padding: 12px; background: var(--bg-soft); border: 1px solid var(--line); font-size: 13px; color: var(--ink-soft); }
 
   /* ---------- Layout ---------- */
   .container { max-width: 1440px; margin: 0 auto; padding: 0 32px; }
@@ -618,6 +650,10 @@ const SEED = {
     logoEmojiBefore: '',
     logoEmojiAfter: '',
     logoImage: '',
+    taxRate: 0,            // GST/tax % applied at checkout (e.g. 5 for 5%)
+    taxLabel: 'GST',
+    razorpayKey: '',       // paste your Razorpay key_id to enable real payments
+    sizeOptions: ['XS','S','M','L','XL'],
     baseCurrency: 'USD',
     currencies: [
       { code: 'USD', symbol: '$',   rate: 1 },
@@ -705,12 +741,97 @@ function setCurrency(code) {
 }
 function esc(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
+/* ====== VARIANT HELPERS ====== */
+function productHasVariants(p) { return p && Array.isArray(p.variants) && p.variants.length > 0; }
+function productTotalStock(p) {
+  if (!p) return 0;
+  if (productHasVariants(p)) return p.variants.reduce((s,v)=> s + (v.stock||0), 0);
+  return p.stock || 0;
+}
+function productStockFor(p, size) {
+  if (!p) return 0;
+  if (!productHasVariants(p)) return p.stock || 0;
+  if (!size) return productTotalStock(p);
+  const v = p.variants.find(v => v.size === size);
+  return v ? (v.stock || 0) : 0;
+}
+function decrementStock(p, size, qty) {
+  if (!p) return;
+  if (productHasVariants(p)) {
+    const v = p.variants.find(v => v.size === size);
+    if (v) v.stock = Math.max(0, v.stock - qty);
+  } else {
+    p.stock = Math.max(0, (p.stock||0) - qty);
+  }
+}
+/* Returns 0–5 average and count */
+function productRating(p) {
+  if (!p || !Array.isArray(p.reviews) || !p.reviews.length) return { avg: 0, count: 0 };
+  const sum = p.reviews.reduce((a,r)=> a + (r.rating||0), 0);
+  return { avg: sum / p.reviews.length, count: p.reviews.length };
+}
+function userBoughtProduct(uid, pid) {
+  if (!uid) return false;
+  return (DATA.orders||[]).some(o => o.userId === uid && o.items.some(i => i.productId === pid));
+}
+function renderStars(rating, size) {
+  const s = size || 14;
+  let out = '';
+  for (let i=1; i<=5; i++) {
+    const filled = i <= Math.round(rating);
+    out += `<span style="color:${filled?'var(--ink)':'var(--line)'};font-size:${s}px;line-height:1;">★</span>`;
+  }
+  return out;
+}
+
 let DATA = loadData();
 let APP_STATE = {
   currentUserId: localStorage.getItem('vybe_current_user') || null,
   accountTab: 'overview',
   appliedCoupon: null, // {code, discount}
+  checkoutAddressId: null,
 };
+
+/* ===== Demo OTP system =====
+   Generates a 6-digit code, "sends" it (shown on-screen for demo),
+   user types it back, we verify. Replace _sendOtpReal() with Twilio/MSG91 for production. */
+let _otpPending = null;
+function _genOtp() { return String(Math.floor(100000 + Math.random()*900000)); }
+function _sendOtpReal(phone, code) {
+  // TODO: integrate Twilio / MSG91 / Firebase Auth here
+  // For demo we just display the code on screen.
+  console.log('[OTP demo] code for', phone, '=', code);
+  return true;
+}
+function sendOtp(phone, payload) {
+  if (!phone || phone.replace(/\D/g,'').length < 6) { toast('Enter a valid phone number'); return false; }
+  const code = _genOtp();
+  _otpPending = { code, phone, payload: payload || {}, exp: Date.now() + 10*60*1000 };
+  _sendOtpReal(phone, code);
+  return true;
+}
+function verifyOtp(submitted) {
+  if (!_otpPending) return { ok: false, error: 'No code pending' };
+  if (Date.now() > _otpPending.exp) { _otpPending = null; return { ok: false, error: 'Code expired — request a new one' }; }
+  if (String(submitted).trim() !== _otpPending.code) return { ok: false, error: 'Wrong code' };
+  const data = { phone: _otpPending.phone, payload: _otpPending.payload };
+  _otpPending = null;
+  return { ok: true, data };
+}
+
+/* Country code list (subset of common ones) */
+const COUNTRY_CODES = [
+  { code: '+91', flag: '🇮🇳', name: 'India' },
+  { code: '+1',  flag: '🇺🇸', name: 'US/CA' },
+  { code: '+44', flag: '🇬🇧', name: 'UK' },
+  { code: '+971',flag: '🇦🇪', name: 'UAE' },
+  { code: '+61', flag: '🇦🇺', name: 'Australia' },
+  { code: '+65', flag: '🇸🇬', name: 'Singapore' },
+  { code: '+49', flag: '🇩🇪', name: 'Germany' },
+  { code: '+33', flag: '🇫🇷', name: 'France' },
+  { code: '+81', flag: '🇯🇵', name: 'Japan' },
+];
+const COUNTRIES = ['India','United States','United Kingdom','United Arab Emirates','Canada','Australia','Singapore','Germany','France','Japan','Italy','Spain','Netherlands','Other'];
 function currentUser() { return APP_STATE.currentUserId ? DATA.users.find(u => u.id === APP_STATE.currentUserId) : null; }
 
 /* Live data sync: if owner edits in admin tab, reflect here */
@@ -773,6 +894,7 @@ function parseHash() {
   if (path === 'journal') return { name: 'journal', params: rest };
   if (path === 'about') return { name: 'about', params: [] };
   if (path === 'account') return { name: 'account', params: rest };
+  if (path === 'policy') return { name: 'policy', params: rest };
   return { name: 'home', params: [] };
 }
 
@@ -791,6 +913,7 @@ function navigate() {
       break;
     case 'about': renderAbout(app); break;
     case 'account': renderAccount(app, r.params[0]); break;
+    case 'policy': renderPolicy(app, r.params[0]); break;
   }
   updateNav(r.name);
   renderFooter();
@@ -853,6 +976,16 @@ function renderFooter() {
         <div>
           <div class="foot-brand"><span class="vy">Vybe</span><span class="co">Co.</span></div>
           <p class="foot-tagline">${esc(c.footerTagline)}</p>
+        </div>
+        <div>
+          <h4>Information</h4>
+          <ul>
+            <li><a href="#/policy/shipping">Shipping & delivery</a></li>
+            <li><a href="#/policy/returns">Returns & exchanges</a></li>
+            <li><a href="#/policy/privacy">Privacy policy</a></li>
+            <li><a href="#/policy/terms">Terms of service</a></li>
+            <li><a href="#/about">About</a></li>
+          </ul>
         </div>
         <div>
           <h4>Shop</h4>
@@ -1042,7 +1175,7 @@ function articleCard(a) {
 }
 
 /* ---------- SHOP ---------- */
-let SHOP_STATE = { catSlug: 'all', sort: 'featured' };
+let SHOP_STATE = { catSlug: 'all', sort: 'featured', priceMin: '', priceMax: '', inStockOnly: false, sizeFilter: '' };
 function renderShop(app, slug) {
   SHOP_STATE.catSlug = slug || 'all';
   const category = DATA.categories.find(c => c.slug === SHOP_STATE.catSlug);
@@ -1050,10 +1183,20 @@ function renderShop(app, slug) {
     ? DATA.products.slice()
     : DATA.products.filter(p => category && p.categoryId === category.id);
 
+  // Filters
+  if (SHOP_STATE.inStockOnly) list = list.filter(p => productTotalStock(p) > 0);
+  if (SHOP_STATE.sizeFilter) list = list.filter(p => productHasVariants(p) ? p.variants.some(v => v.size === SHOP_STATE.sizeFilter && (v.stock||0) > 0) : true);
+  if (SHOP_STATE.priceMin != null && SHOP_STATE.priceMin !== '') list = list.filter(p => (p.salePrice||p.price) >= Number(SHOP_STATE.priceMin));
+  if (SHOP_STATE.priceMax != null && SHOP_STATE.priceMax !== '') list = list.filter(p => (p.salePrice||p.price) <= Number(SHOP_STATE.priceMax));
+
   const sort = SHOP_STATE.sort;
   if (sort === 'price-asc') list.sort((a,b)=> (a.salePrice||a.price) - (b.salePrice||b.price));
   if (sort === 'price-desc') list.sort((a,b)=> (b.salePrice||b.price) - (a.salePrice||a.price));
   if (sort === 'name') list.sort((a,b)=> a.name.localeCompare(b.name));
+  if (sort === 'rating') list.sort((a,b)=> productRating(b).avg - productRating(a).avg);
+  if (sort === 'newest') list.reverse();
+  // collect available sizes from current category list (before size filter, for completeness)
+  const sizesAvailable = [...new Set(DATA.products.flatMap(p => (p.variants||[]).map(v=>v.size)))].filter(Boolean);
 
   app.innerHTML = `
     <section class="container" style="padding: 56px 0 24px;">
@@ -1062,13 +1205,23 @@ function renderShop(app, slug) {
       <p style="color:var(--ink-soft);max-width:520px;margin-top:16px;">${list.length} ${list.length === 1 ? 'piece' : 'pieces'} curated and ready to wear.</p>
     </section>
     <section class="container" style="padding-bottom: 120px;">
-      <div class="filter-bar">
+      <div class="filter-bar" style="flex-wrap:wrap;gap:12px;">
         <div class="filter-chip ${SHOP_STATE.catSlug==='all'?'active':''}" onclick="location.hash='#/shop'">All</div>
         ${DATA.categories.map(c => `<div class="filter-chip ${SHOP_STATE.catSlug===c.slug?'active':''}" onclick="location.hash='#/shop/${c.slug}'">${esc(c.name)}</div>`).join('')}
+        <div style="flex:1;"></div>
+        ${sizesAvailable.length ? `<select onchange="SHOP_STATE.sizeFilter=this.value; renderShop(document.getElementById('app'), SHOP_STATE.catSlug==='all'?null:SHOP_STATE.catSlug)" style="padding:8px 12px;border:1px solid var(--line);background:var(--bg);font-size:12px;">
+          <option value="">All sizes</option>
+          ${sizesAvailable.map(sz => `<option value="${esc(sz)}" ${SHOP_STATE.sizeFilter===sz?'selected':''}>${esc(sz)}</option>`).join('')}
+        </select>` : ''}
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);"><input type="checkbox" ${SHOP_STATE.inStockOnly?'checked':''} onchange="SHOP_STATE.inStockOnly=this.checked; renderShop(document.getElementById('app'), SHOP_STATE.catSlug==='all'?null:SHOP_STATE.catSlug)" /> In stock only</label>
+        <input type="number" placeholder="Min" value="${SHOP_STATE.priceMin||''}" onchange="SHOP_STATE.priceMin=this.value; renderShop(document.getElementById('app'), SHOP_STATE.catSlug==='all'?null:SHOP_STATE.catSlug)" style="width:70px;padding:8px;border:1px solid var(--line);background:var(--bg);font-size:12px;" />
+        <input type="number" placeholder="Max" value="${SHOP_STATE.priceMax||''}" onchange="SHOP_STATE.priceMax=this.value; renderShop(document.getElementById('app'), SHOP_STATE.catSlug==='all'?null:SHOP_STATE.catSlug)" style="width:70px;padding:8px;border:1px solid var(--line);background:var(--bg);font-size:12px;" />
         <select class="sort-select" onchange="SHOP_STATE.sort=this.value; renderShop(document.getElementById('app'), SHOP_STATE.catSlug==='all'?null:SHOP_STATE.catSlug)">
           <option value="featured" ${sort==='featured'?'selected':''}>Featured</option>
+          <option value="newest" ${sort==='newest'?'selected':''}>Newest</option>
           <option value="price-asc" ${sort==='price-asc'?'selected':''}>Price: Low to High</option>
           <option value="price-desc" ${sort==='price-desc'?'selected':''}>Price: High to Low</option>
+          <option value="rating" ${sort==='rating'?'selected':''}>Top Rated</option>
           <option value="name" ${sort==='name'?'selected':''}>Name</option>
         </select>
       </div>
@@ -1110,18 +1263,54 @@ function renderProduct(app, id) {
             <span class="stock-pill ${stockClass}">${stockText}</span>
           </div>
           <p class="desc">${esc(p.description).replace(/\n/g,'<br>')}</p>
-          <div>
-            <div class="eyebrow" style="margin-bottom:12px;">Size</div>
-            <div class="size-row" id="sizeRow">
-              ${['XS','S','M','L','XL'].map((s,i) => `<div class="size ${i===1?'selected':''}" onclick="document.querySelectorAll('#sizeRow .size').forEach(x=>x.classList.remove('selected'));this.classList.add('selected')">${s}</div>`).join('')}
-            </div>
-          </div>
+          ${(() => {
+            const hasV = productHasVariants(p);
+            const sizes = hasV ? p.variants : (DATA.config.sizeOptions||['XS','S','M','L','XL']).map(s => ({size:s, stock: 0}));
+            const showSizes = hasV;
+            if (!showSizes) return '';
+            return `<div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;">
+                <span class="eyebrow">Size</span>
+                <a class="size-guide-link" onclick="showSizeGuide()">Size guide</a>
+              </div>
+              <div class="size-row" id="sizeRow">
+                ${sizes.map((v,i) => {
+                  const out = (v.stock||0) <= 0;
+                  return `<div class="size-pill ${out?'out':''} ${i===0&&!out?'selected':''}" data-size="${esc(v.size)}" onclick="${out?'':"document.querySelectorAll('#sizeRow .size-pill').forEach(x=>x.classList.remove('selected'));this.classList.add('selected')"}">${esc(v.size)}</div>`;
+                }).join('')}
+              </div>
+            </div>`;
+          })()}
           <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:8px;">
-            <button class="btn btn-primary" style="flex:1;min-width:200px;" onclick="addToCart('${p.id}')" ${p.stock<=0?'disabled style="opacity:.4;cursor:not-allowed;flex:1;min-width:200px;"':''}>
-              ${p.stock<=0 ? 'Sold Out' : 'Add to Bag'}
+            <button class="btn btn-primary" style="flex:1;min-width:200px;" onclick="addToCart('${p.id}', document.querySelector('#sizeRow .size-pill.selected')?.dataset.size || '')" ${productTotalStock(p)<=0?'disabled style="opacity:.4;cursor:not-allowed;flex:1;min-width:200px;"':''}>
+              ${productTotalStock(p)<=0 ? 'Sold Out' : 'Add to Bag'}
             </button>
             <button class="btn btn-outline" onclick="location.hash='#/outfit-builder'">Style it</button>
           </div>
+          ${(() => {
+            const r = productRating(p);
+            const u = currentUser();
+            const canReview = u && userBoughtProduct(u.id, p.id) && !(p.reviews||[]).some(rv => rv.userId === u.id);
+            return `
+              <div style="margin-top:48px;padding-top:32px;border-top:1px solid var(--line);">
+                <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:20px;">
+                  <h3 style="font-size:24px;">Reviews ${r.count?`(${r.count})`:''}</h3>
+                  ${r.count ? `<div style="display:flex;align-items:center;gap:8px;">${renderStars(r.avg, 16)} <span class="small">${r.avg.toFixed(1)}/5</span></div>` : ''}
+                </div>
+                ${canReview ? `<button class="btn btn-outline btn-sm" onclick="openReviewModal('${p.id}')" style="margin-bottom:20px;">+ Write a review</button>` : ''}
+                ${(p.reviews||[]).length ? (p.reviews||[]).slice().reverse().map(rv => `
+                  <div style="padding:16px 0;border-bottom:1px solid var(--line);">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+                      <strong>${esc(rv.name)}</strong>
+                      <span class="small muted">${new Date(rv.date).toLocaleDateString()}</span>
+                    </div>
+                    <div style="margin-bottom:8px;">${renderStars(rv.rating, 14)}</div>
+                    <div style="color:var(--ink-soft);font-size:14px;line-height:1.6;">${esc(rv.text).replace(/\n/g,'<br>')}</div>
+                  </div>
+                `).join('') : `<p class="small muted">${u ? (userBoughtProduct(u.id, p.id) ? 'Be the first to review.' : 'Only customers who have bought this can review.') : 'Sign in to leave a review after purchase.'}</p>`}
+              </div>
+            `;
+          })()}
           <div class="meta-row">
             <div>Free returns</div>
             <div>·</div>
@@ -1144,6 +1333,60 @@ function renderProduct(app, id) {
 }
 
 /* ---------- JOURNAL ---------- */
+function openReviewModal(pid) {
+  const u = currentUser(); if (!u) { openAuthModal('signin'); return; }
+  const p = DATA.products.find(x => x.id === pid); if (!p) return;
+  showModal(`
+    <div class="modal-head"><div><span class="eyebrow">${esc(p.name)}</span><h2 style="margin-top:6px;">Write a review</h2></div><button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Rating</label>
+        <div id="rev-stars" style="display:flex;gap:6px;font-size:32px;cursor:pointer;">
+          ${[1,2,3,4,5].map(i => `<span class="rev-star" data-r="${i}" onclick="document.querySelectorAll('.rev-star').forEach((x,j)=>x.style.color=j<this.dataset.r?'var(--ink)':'var(--line)');document.getElementById('rev-rating').value=this.dataset.r;">★</span>`).join('')}
+        </div>
+        <input type="hidden" id="rev-rating" value="5" />
+      </div>
+      <div class="field full"><label>Your review</label><textarea id="rev-text" rows="4" placeholder="What did you think?"></textarea></div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px;padding-top:24px;border-top:1px solid var(--line);">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="submitReview('${pid}')">Post review</button>
+    </div>
+  `);
+  // Initialize stars
+  setTimeout(() => document.querySelectorAll('.rev-star').forEach(x => x.style.color = 'var(--ink)'), 50);
+}
+function submitReview(pid) {
+  const u = currentUser(); if (!u) return;
+  const p = DATA.products.find(x => x.id === pid); if (!p) return;
+  if (!userBoughtProduct(u.id, p.id)) { toast('Only buyers can review'); return; }
+  const rating = parseInt(document.getElementById('rev-rating').value, 10) || 5;
+  const text = document.getElementById('rev-text').value.trim();
+  if (!text) { toast('Please write a review'); return; }
+  if (!Array.isArray(p.reviews)) p.reviews = [];
+  if (p.reviews.find(r => r.userId === u.id)) { toast('You already reviewed this'); return; }
+  p.reviews.push({ id: uid('rv'), userId: u.id, name: u.name || u.username, rating, text, date: new Date().toISOString() });
+  saveData(DATA); closeModal(); toast('Review posted ✦'); navigate();
+}
+function showSizeGuide() {
+  showModal(`
+    <div class="modal-head"><div><span class="eyebrow">Information</span><h2 style="margin-top:6px;">Size guide</h2></div><button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+    <p class="small muted" style="margin-bottom:16px;">All measurements in inches. Garments are designed for a relaxed fit — size up for an oversized look, size down for a closer one.</p>
+    <table style="width:100%;border-collapse:collapse;font-size:13px;">
+      <thead><tr style="background:var(--bg-soft);"><th style="text-align:left;padding:10px;border-bottom:1px solid var(--line);">Size</th><th style="text-align:left;padding:10px;border-bottom:1px solid var(--line);">Bust</th><th style="text-align:left;padding:10px;border-bottom:1px solid var(--line);">Waist</th><th style="text-align:left;padding:10px;border-bottom:1px solid var(--line);">Hips</th><th style="text-align:left;padding:10px;border-bottom:1px solid var(--line);">UK</th><th style="text-align:left;padding:10px;border-bottom:1px solid var(--line);">EU</th></tr></thead>
+      <tbody>
+        ${[['XS','32–33','24–25','34–35','4–6','32–34'],
+            ['S','34–35','26–27','36–37','8','36'],
+            ['M','36–37','28–29','38–39','10','38'],
+            ['L','38–40','30–32','40–42','12','40'],
+            ['XL','41–43','33–35','43–45','14','42'],
+            ['XXL','44–46','36–38','46–48','16','44']].map(r => `<tr><td style="padding:10px;border-bottom:1px solid var(--line);font-family:var(--serif);">${r[0]}</td><td style="padding:10px;border-bottom:1px solid var(--line);">${r[1]}</td><td style="padding:10px;border-bottom:1px solid var(--line);">${r[2]}</td><td style="padding:10px;border-bottom:1px solid var(--line);">${r[3]}</td><td style="padding:10px;border-bottom:1px solid var(--line);">${r[4]}</td><td style="padding:10px;border-bottom:1px solid var(--line);">${r[5]}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <p class="small muted" style="margin-top:20px;">Still unsure? Email us at <strong>${esc(DATA.config.email||'hello@vybeco.studio')}</strong> with your measurements and we'll suggest a size.</p>
+  `);
+}
+
 function renderJournal(app) {
   app.innerHTML = `
     <section class="container" style="padding: 56px 0 24px;">
@@ -1206,6 +1449,73 @@ function renderAbout(app) {
       <div class="container" style="text-align:center;max-width:680px;">
         <span class="display-script" style="color:var(--accent);">vybe.</span>
         <p style="margin-top:24px;color:var(--ink-soft);font-size:16px;">A feeling. A way of dressing. A small studio with a soft spot for fabric and form.</p>
+      </div>
+    </section>
+  `;
+}
+
+function renderPolicy(app, kind) {
+  const policies = {
+    shipping: {
+      title: 'Shipping & Delivery',
+      body: `<p>We ship pan-India within 3–7 business days, free on orders over our shipping threshold.</p>
+      <p>International orders take 7–14 business days. Duties may apply at delivery, payable by the recipient.</p>
+      <p>Each piece is hand-checked and packed in our signature recycled tissue and cotton tote. We send a tracking link the moment your order is dispatched.</p>
+      <p>For express delivery within metro cities, contact us at <strong>${esc(DATA.config.email||'hello@vybeco.studio')}</strong> at the time of order.</p>`
+    },
+    returns: {
+      title: 'Returns & Exchanges',
+      body: `<p>We want you to love what you wear. If a piece doesn't feel right, return it within <strong>14 days</strong> of delivery for a full refund or exchange.</p>
+      <h3 style="margin-top:24px;">How to return</h3>
+      <ol style="margin-left:18px;line-height:1.8;">
+        <li>Email us at <strong>${esc(DATA.config.email||'hello@vybeco.studio')}</strong> with your order number.</li>
+        <li>We'll send a return label within 24 hours.</li>
+        <li>Pack the piece(s) in original condition, with tags attached, in any sturdy box.</li>
+        <li>Drop off at any partner courier — pickups available in metro cities on request.</li>
+      </ol>
+      <h3 style="margin-top:24px;">What can't be returned</h3>
+      <p>Final-sale items, intimates, and earrings — for hygiene reasons.</p>
+      <h3 style="margin-top:24px;">Refunds</h3>
+      <p>Once we receive your return, refunds are processed within 5 business days to your original payment method.</p>`
+    },
+    privacy: {
+      title: 'Privacy Policy',
+      body: `<p><em>Last updated: ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</em></p>
+      <h3 style="margin-top:24px;">What we collect</h3>
+      <p>Name, phone number, email, delivery addresses, and order history. We never see your payment card details — payments are handled by our payment partner.</p>
+      <h3 style="margin-top:24px;">How we use it</h3>
+      <p>Solely to fulfill your orders, send shipping updates, and (if you opt in) share new collection news. We don't sell or rent your data to anyone.</p>
+      <h3 style="margin-top:24px;">Cookies</h3>
+      <p>Local storage is used to remember your cart, saved pieces, and currency preference. No cross-site tracking.</p>
+      <h3 style="margin-top:24px;">Your rights</h3>
+      <p>Email <strong>${esc(DATA.config.email||'hello@vybeco.studio')}</strong> to access, correct, or delete your data — we respond within 7 days.</p>`
+    },
+    terms: {
+      title: 'Terms of Service',
+      body: `<p><em>By placing an order on Vybe Co. you agree to these terms.</em></p>
+      <h3 style="margin-top:24px;">Orders</h3>
+      <p>All orders are subject to availability. We reserve the right to cancel any order with a full refund.</p>
+      <h3 style="margin-top:24px;">Pricing</h3>
+      <p>Prices are in our base currency unless otherwise noted. Customer-side currency conversion is approximate; the charge on your card is in our base currency.</p>
+      <h3 style="margin-top:24px;">Intellectual property</h3>
+      <p>All imagery, text, and design on this site is owned by Vybe Co. Please don't reproduce without permission.</p>
+      <h3 style="margin-top:24px;">Liability</h3>
+      <p>Our liability is limited to the value of your order. We're not responsible for delays caused by courier, customs, or events beyond our control.</p>
+      <h3 style="margin-top:24px;">Contact</h3>
+      <p><strong>${esc(DATA.config.email||'hello@vybeco.studio')}</strong></p>`
+    }
+  };
+  const p = policies[kind] || policies.shipping;
+  app.innerHTML = `
+    <section class="container" style="padding: 56px 0 96px; max-width: 760px;">
+      <span class="eyebrow">Information</span>
+      <h1 class="display" style="font-size:clamp(40px,6vw,72px);margin: 16px 0 32px;">${esc(p.title)}</h1>
+      <div style="font-size:16px;line-height:1.8;color:var(--ink-soft);">${p.body}</div>
+      <div style="margin-top:48px;padding-top:32px;border-top:1px solid var(--line);display:flex;gap:24px;flex-wrap:wrap;">
+        <a href="#/policy/shipping" style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;">Shipping</a>
+        <a href="#/policy/returns" style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;">Returns</a>
+        <a href="#/policy/privacy" style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;">Privacy</a>
+        <a href="#/policy/terms" style="font-size:11px;letter-spacing:.18em;text-transform:uppercase;">Terms</a>
       </div>
     </section>
   `;
@@ -1465,24 +1775,30 @@ function addOutfitToCart() {
 /* ====================================================
    CART
 ==================================================== */
-function addToCart(pid, silent) {
+function addToCart(pid, size, silent) {
+  if (typeof size === 'boolean') { silent = size; size = ''; }
+  size = size || '';
   const p = DATA.products.find(x => x.id === pid);
-  if (!p || p.stock <= 0) { toast('Sold out'); return; }
-  const line = DATA.cart.find(c => c.productId === pid);
+  if (!p) return;
+  if (productHasVariants(p) && !size) { toast('Please select a size'); return; }
+  if (productStockFor(p, size) <= 0) { toast(size ? `Size ${size} sold out` : 'Sold out'); return; }
+  const line = DATA.cart.find(c => c.productId === pid && (c.size||'') === size);
   if (line) line.qty += 1;
-  else DATA.cart.push({ productId: pid, qty: 1 });
+  else DATA.cart.push({ productId: pid, size, qty: 1 });
   trackSaved(pid);
   saveData(DATA);
   updateCartCount();
   if (!silent) toast('Added to bag');
   renderCartDrawer();
 }
-function removeFromCart(pid) {
-  DATA.cart = DATA.cart.filter(c => c.productId !== pid);
+function removeFromCart(pid, size) {
+  size = size || '';
+  DATA.cart = DATA.cart.filter(c => !(c.productId === pid && (c.size||'') === size));
   saveData(DATA); updateCartCount(); renderCartDrawer();
 }
-function updateCartQty(pid, delta) {
-  const line = DATA.cart.find(c => c.productId === pid);
+function updateCartQty(pid, delta, size) {
+  size = size || '';
+  const line = DATA.cart.find(c => c.productId === pid && (c.size||'') === size);
   if (!line) return;
   line.qty = Math.max(1, line.qty + delta);
   saveData(DATA); updateCartCount(); renderCartDrawer();
@@ -1505,21 +1821,23 @@ function renderCartDrawer() {
     const p = DATA.products.find(x => x.id === line.productId);
     if (!p) return '';
     const price = p.salePrice || p.price;
+    const size = line.size || '';
+    const sizeStr = size ? `Size ${esc(size)}` : 'One size';
     return `
       <div class="cart-line">
         <img src="${esc(p.image)}" alt="" />
         <div>
           <div class="cl-name">${esc(p.name)}</div>
-          <div class="cl-meta">${fmt(price)} · Size M</div>
+          <div class="cl-meta">${fmt(price)} · ${sizeStr}</div>
           <div class="cart-qty">
-            <button onclick="updateCartQty('${p.id}', -1)">−</button>
+            <button onclick="updateCartQty('${p.id}', -1, '${esc(size)}')">−</button>
             <span>${line.qty}</span>
-            <button onclick="updateCartQty('${p.id}', 1)">+</button>
+            <button onclick="updateCartQty('${p.id}', 1, '${esc(size)}')">+</button>
           </div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:14px;margin-bottom:8px;">${fmt(price * line.qty)}</div>
-          <button class="small muted" onclick="removeFromCart('${p.id}')" style="cursor:pointer;">Remove</button>
+          <button class="small muted" onclick="removeFromCart('${p.id}', '${esc(size)}')" style="cursor:pointer;">Remove</button>
         </div>
       </div>
     `;
@@ -1552,19 +1870,118 @@ function renderCartDrawer() {
 }
 function checkout() {
   if (!DATA.cart.length) return;
+  // Require authentication + address
+  const u = currentUser();
+  if (!u) {
+    closeCart();
+    toast('Please sign in to checkout');
+    setTimeout(() => openAuthModal('signin'), 200);
+    return;
+  }
+  if (!u.addresses || !u.addresses.length) {
+    closeCart();
+    toast('Please add a delivery address first');
+    setTimeout(() => openAddressModal(), 200);
+    return;
+  }
+  // Open checkout modal to confirm address
+  openCheckoutModal();
+}
+
+function openCheckoutModal() {
+  const u = currentUser(); if (!u) return;
   const subtotal = DATA.cart.reduce((s,l)=>{ const p = DATA.products.find(x => x.id === l.productId); return s + (p ? (p.salePrice||p.price) * l.qty : 0); }, 0);
   const shipping = subtotal >= 150 ? 0 : 12;
   const discount = computeDiscount(subtotal);
-  const total = Math.max(0, subtotal + shipping - discount);
+  const taxRate = Number(DATA.config.taxRate || 0);
+  const taxable = Math.max(0, subtotal - discount);
+  const tax = Math.round(taxable * taxRate) / 100;
+  const total = Math.max(0, taxable + shipping + tax);
+  const def = u.addresses.find(a => a.isDefault) || u.addresses[0];
+  APP_STATE.checkoutAddressId = APP_STATE.checkoutAddressId || def.id;
+  showModal(`
+    <div class="modal-head">
+      <div><span class="eyebrow">Order summary</span><h2 style="margin-top:6px;">Confirm & place order</h2></div>
+      <button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div style="margin-bottom:24px;">
+      <div class="eyebrow" style="margin-bottom:10px;">Deliver to</div>
+      <select class="addr-select" id="co-addr" onchange="APP_STATE.checkoutAddressId=this.value; openCheckoutModal();">
+        ${u.addresses.map(a => `<option value="${a.id}" ${a.id===APP_STATE.checkoutAddressId?'selected':''}>${esc(a.label)} — ${esc(a.line1)}, ${esc(a.city)}</option>`).join('')}
+      </select>
+      ${(() => { const a = u.addresses.find(x => x.id === APP_STATE.checkoutAddressId) || def; return `
+        <div class="addr-card" style="margin-top:8px;">
+          <div class="addr-name">${esc(a.recipient || u.name)}</div>
+          <div class="addr-body">${esc(a.line1)}${a.line2 ? '<br>'+esc(a.line2) : ''}<br>${esc(a.city)}${a.region?', '+esc(a.region):''} ${esc(a.postal)}<br>${esc(a.country)}<br><span style="color:var(--ink-soft);">${esc(a.phone || u.phone)}</span></div>
+        </div>`; })()}
+      <button class="btn btn-outline btn-sm" style="margin-top:12px;" onclick="closeModal(); openAddressModal();">+ Add another address</button>
+    </div>
+    <div style="border-top:1px solid var(--line); padding-top:20px;">
+      <div class="eyebrow" style="margin-bottom:10px;">Order total</div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>Subtotal</span><span>${fmt(subtotal)}</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>Shipping</span><span>${shipping?fmt(shipping):'Free'}</span></div>
+      ${discount?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;color:var(--accent);"><span>Discount</span><span>− ${fmt(discount)}</span></div>`:''}
+      ${tax?`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span>${esc(DATA.config.taxLabel||'Tax')} (${taxRate}%)</span><span>${fmt(tax)}</span></div>`:''}
+      <div style="display:flex;justify-content:space-between;font-family:var(--serif);font-size:22px;margin-top:12px;padding-top:12px;border-top:1px solid var(--line);"><span>Total</span><span>${fmt(total)}</span></div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;margin-top:24px;" onclick="placeOrder()">Place order</button>
+  `);
+}
 
-  // Create order record
+function placeOrder() {
+  const u = currentUser(); if (!u) return;
+  const subtotal = DATA.cart.reduce((s,l)=>{ const p = DATA.products.find(x => x.id === l.productId); return s + (p ? (p.salePrice||p.price) * l.qty : 0); }, 0);
+  const shipping = subtotal >= 150 ? 0 : 12;
+  const discount = computeDiscount(subtotal);
+  const taxRate = Number(DATA.config.taxRate || 0);
+  const taxable = Math.max(0, subtotal - discount);
+  const tax = Math.round(taxable * taxRate) / 100;
+  const total = Math.max(0, taxable + shipping + tax);
+  const address = u.addresses.find(a => a.id === APP_STATE.checkoutAddressId) || u.addresses[0];
+
+  // Razorpay payment integration
+  if (DATA.config.razorpayKey) {
+    // Real payment flow (requires Razorpay key in admin Settings)
+    if (typeof Razorpay === 'undefined') {
+      toast('Loading payment gateway...');
+      const sc = document.createElement('script');
+      sc.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      sc.onload = () => placeOrder();
+      document.body.appendChild(sc);
+      return;
+    }
+    const rzp = new Razorpay({
+      key: DATA.config.razorpayKey,
+      amount: Math.round(total * 100), // paise
+      currency: DATA.config.baseCurrency === 'INR' ? 'INR' : 'USD',
+      name: DATA.config.siteName || 'Vybe Co.',
+      description: 'Order from ' + (DATA.config.siteName || 'Vybe Co.'),
+      prefill: { name: u.name, email: u.email, contact: u.phone },
+      theme: { color: '#1A1A1A' },
+      handler: (response) => {
+        _finalizeOrder(u, subtotal, shipping, discount, tax, total, address, response.razorpay_payment_id);
+      },
+      modal: { ondismiss: () => toast('Payment cancelled') },
+    });
+    rzp.open();
+    return;
+  }
+  // Demo mode (no payment)
+  _finalizeOrder(u, subtotal, shipping, discount, tax, total, address, null);
+}
+
+function _finalizeOrder(u, subtotal, shipping, discount, tax, total, address, paymentId) {
   const order = {
     id: uid('ord'),
     number: 'VYBE-' + Date.now().toString().slice(-6),
     userId: APP_STATE.currentUserId || null,
+    paymentId: paymentId,
+    paymentMode: paymentId ? 'razorpay' : 'demo',
+    tax: tax,
+    shippingAddress: JSON.parse(JSON.stringify(address)),
     items: DATA.cart.map(l => {
       const p = DATA.products.find(x => x.id === l.productId);
-      return { productId: l.productId, name: p ? p.name : '', image: p ? p.image : '', qty: l.qty, price: p ? (p.salePrice || p.price) : 0 };
+      return { productId: l.productId, name: p ? p.name : '', image: p ? p.image : '', qty: l.qty, size: l.size || '', price: p ? (p.salePrice || p.price) : 0 };
     }),
     subtotal, shipping, discount, total,
     couponCode: APP_STATE.appliedCoupon ? APP_STATE.appliedCoupon.code : null,
@@ -1573,16 +1990,18 @@ function checkout() {
   };
   DATA.orders.push(order);
 
-  // Decrement stock
+  // Decrement stock (per variant if applicable)
   DATA.cart.forEach(line => {
     const p = DATA.products.find(x => x.id === line.productId);
-    if (p) p.stock = Math.max(0, p.stock - line.qty);
+    if (p) decrementStock(p, line.size || '', line.qty);
   });
   DATA.cart = [];
   APP_STATE.appliedCoupon = null;
   saveData(DATA);
   updateCartCount();
   closeCart();
+  closeModal();
+  APP_STATE.checkoutAddressId = null;
   toast('Order placed — thank you ✦');
   if (APP_STATE.currentUserId) { APP_STATE.accountTab = 'orders'; location.hash = '#/account'; }
   else navigate();
@@ -1598,7 +2017,38 @@ function openCart() { renderCartDrawer(); document.getElementById('cartDrawer').
 function closeCart() { document.getElementById('cartDrawer').classList.remove('open'); }
 function showModal(html) { document.getElementById('modalContent').innerHTML = html; document.getElementById('modal').classList.add('open'); }
 function closeModal() { document.getElementById('modal').classList.remove('open'); }
-function openSearch() { toast('Search coming soon'); }
+function openSearch() {
+  showModal(`
+    <div class="modal-head">
+      <div><span class="eyebrow">Search</span><h2 style="margin-top:6px;">What are you looking for?</h2></div>
+      <button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <input id="search-input" placeholder="Search pieces, categories, articles..." style="width:100%;padding:16px;border:1px solid var(--line);background:var(--bg);font-size:18px;outline:none;" oninput="renderSearchResults(this.value)" />
+    <div id="search-results" style="margin-top:24px;max-height:50vh;overflow-y:auto;"></div>
+  `);
+  setTimeout(()=> { document.getElementById('search-input').focus(); renderSearchResults(''); }, 50);
+}
+function renderSearchResults(q) {
+  q = (q||'').trim().toLowerCase();
+  const el = document.getElementById('search-results'); if (!el) return;
+  if (!q) { el.innerHTML = `<p class="muted small">Start typing — try "linen", "dress", "knitwear"...</p>`; return; }
+  const prods = DATA.products.filter(p =>
+    p.name.toLowerCase().includes(q) ||
+    (p.description||'').toLowerCase().includes(q) ||
+    (p.tags||[]).join(' ').toLowerCase().includes(q)
+  ).slice(0, 12);
+  const cats = DATA.categories.filter(c => c.name.toLowerCase().includes(q));
+  const arts = (DATA.articles||[]).filter(a => a.title.toLowerCase().includes(q) || (a.excerpt||'').toLowerCase().includes(q));
+  if (!prods.length && !cats.length && !arts.length) {
+    el.innerHTML = `<p class="muted small">No matches for "${esc(q)}".</p>`;
+    return;
+  }
+  el.innerHTML = `
+    ${prods.length ? `<div class="eyebrow" style="margin-bottom:8px;">Pieces (${prods.length})</div>${prods.map(p => `<a href="#/product/${p.id}" onclick="closeModal()" style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:center;"><img src="${esc(p.image)}" style="width:48px;height:60px;object-fit:cover;"/><div><div style="font-family:var(--serif);font-size:15px;">${esc(p.name)}</div><div class="small muted">${fmt(p.salePrice||p.price)}</div></div></a>`).join('')}` : ''}
+    ${cats.length ? `<div class="eyebrow" style="margin:16px 0 8px;">Categories</div>${cats.map(c => `<a href="#/shop/${c.slug}" onclick="closeModal()" style="display:block;padding:8px 0;border-bottom:1px solid var(--line);font-family:var(--serif);">${esc(c.name)}</a>`).join('')}` : ''}
+    ${arts.length ? `<div class="eyebrow" style="margin:16px 0 8px;">Journal</div>${arts.map(a => `<a href="#/journal/${a.id}" onclick="closeModal()" style="display:block;padding:8px 0;border-bottom:1px solid var(--line);font-family:var(--serif);">${esc(a.title)}</a>`).join('')}` : ''}
+  `;
+}
 
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') { closeModal(); closeMenu(); closeCart(); closeProfile(); }
@@ -1690,12 +2140,37 @@ function renderSignUpForm() {
     <div class="form-grid">
       <div class="field full"><label>Your name</label><input id="su-name" placeholder="Jane" /></div>
       <div class="field"><label>Username</label><input id="su-username" placeholder="janev" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9._-]/g,'')" /></div>
-      <div class="field"><label>Phone (optional)</label><input id="su-phone" type="tel" placeholder="+1 555 0100" /></div>
-      <div class="field full"><label>Email</label><input id="su-email" type="email" placeholder="you@vybe.co" /></div>
+      <div class="field full"><label>Phone number (we'll send a verification code)</label>
+        <div class="phone-row">
+          <select id="su-cc">${COUNTRY_CODES.map(c => `<option value="${c.code}" ${c.code==='+91'?'selected':''}>${c.flag} ${c.code}</option>`).join('')}</select>
+          <input id="su-phone" type="tel" placeholder="98765 43210" inputmode="numeric" />
+        </div>
+      </div>
+      <div class="field full"><label>Email (optional)</label><input id="su-email" type="email" placeholder="you@vybe.co" /></div>
       <div class="field full"><label>Password</label><input id="su-pw" type="password" placeholder="At least 6 characters" onkeydown="if(event.key==='Enter') doSignUp()" /></div>
     </div>
-    <button class="btn btn-primary" style="width:100%;" onclick="doSignUp()">Create account</button>
+    <button class="btn btn-primary" style="width:100%;" onclick="doSignUp()">Send verification code</button>
     <p class="small muted" style="text-align:center;margin-top:16px;">Already with us? <a onclick="openAuthModal('signin')" style="cursor:pointer;text-decoration:underline;color:var(--ink);">Sign in</a></p>
+  `;
+}
+function renderOtpStep() {
+  const phone = _otpPending ? _otpPending.phone : '';
+  const code = _otpPending ? _otpPending.code : '';
+  return `
+    <p class="small" style="color:var(--ink-soft);margin-bottom:16px;">We sent a 6-digit code to <strong>${esc(phone)}</strong>.</p>
+    <div class="otp-display">
+      <div class="otp-label">Demo mode — your code is</div>
+      <div class="otp-code">${esc(code)}</div>
+      <div class="otp-note">In production this would be sent via SMS. The code expires in 10 minutes.</div>
+    </div>
+    <div class="form-grid">
+      <div class="field full">
+        <label>Enter the 6-digit code</label>
+        <input id="otp-code" class="otp-input" maxlength="6" inputmode="numeric" placeholder="••••••" onkeydown="if(event.key==='Enter') doVerifyOtp()" />
+      </div>
+    </div>
+    <button class="btn btn-primary" style="width:100%;" onclick="doVerifyOtp()">Verify & create account</button>
+    <p class="small muted" style="text-align:center;margin-top:16px;"><a onclick="openAuthModal('signup')" style="cursor:pointer;text-decoration:underline;color:var(--ink);">← Back</a>  ·  Didn't get the code? <a onclick="doSignUp()" style="cursor:pointer;text-decoration:underline;color:var(--ink);">Resend</a></p>
   `;
 }
 
@@ -1715,7 +2190,54 @@ function doSignIn() {
   toast(`Welcome back, ${user.name || user.username}`);
   navigate();
 }
+function doVerifyOtp() {
+  const code = document.getElementById('otp-code').value.trim();
+  const result = verifyOtp(code);
+  if (!result.ok) { toast(result.error); return; }
+  const d = result.data.payload;
+  // Check for duplicates
+  if (d.email && DATA.users.find(u => u.email && u.email.toLowerCase() === d.email.toLowerCase())) { toast('Email already in use'); return; }
+  if (DATA.users.find(u => u.phone === result.data.phone)) { toast('Phone already registered — try signing in'); return; }
+  const user = {
+    id: uid('u'),
+    name: d.name, username: d.username, email: d.email,
+    phone: result.data.phone, phoneVerified: true,
+    password: d.password,
+    addresses: [],
+    createdAt: new Date().toISOString(),
+  };
+  DATA.users.push(user);
+  APP_STATE.currentUserId = user.id;
+  localStorage.setItem('vybe_current_user', user.id);
+  saveData(DATA); closeModal(); toast('Welcome to Vybe Co.');
+  navigate();
+  // Prompt to add first address
+  setTimeout(() => { if (!user.addresses || !user.addresses.length) openAddressModal(); }, 500);
+}
+
 function doSignUp() {
+  const name = document.getElementById('su-name').value.trim();
+  const phoneDigits = (document.getElementById('su-phone').value || '').replace(/\D/g,'');
+  const cc = document.getElementById('su-cc').value;
+  const fullPhone = cc + ' ' + phoneDigits;
+  const email = (document.getElementById('su-email').value || '').trim();
+  const username = (document.getElementById('su-username').value || '').trim();
+  const pw = document.getElementById('su-pw').value;
+  if (!name) { toast('Please enter your name'); return; }
+  if (!phoneDigits || phoneDigits.length < 6) { toast('Enter a valid phone number'); return; }
+  if (!pw || pw.length < 6) { toast('Password must be at least 6 characters'); return; }
+  if (DATA.users.find(u => u.phone === fullPhone)) { toast('That phone is already registered — sign in instead'); return; }
+  if (email && DATA.users.find(u => u.email && u.email.toLowerCase() === email.toLowerCase())) { toast('That email is already registered'); return; }
+  // Send OTP and switch to verify step
+  sendOtp(fullPhone, { name, username, email, password: pw });
+  // Re-render the auth body to show OTP step
+  const body = document.getElementById('authBody');
+  if (body) body.innerHTML = renderOtpStep();
+  setTimeout(() => document.getElementById('otp-code')?.focus(), 50);
+  return;
+}
+
+function _originalDoSignUp_unused() {
   const name = document.getElementById('su-name').value.trim();
   const username = document.getElementById('su-username').value.trim();
   const phone = document.getElementById('su-phone').value.trim();
@@ -1819,6 +2341,7 @@ function renderAccount(app, subTab) {
   const tabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'orders', label: 'Orders' },
+    { id: 'addresses', label: 'Addresses' },
     { id: 'history', label: 'Browsing History' },
     { id: 'saved', label: 'Saved Pieces' },
     { id: 'coupons', label: 'Deals & Coupons' },
@@ -1850,6 +2373,7 @@ function renderAccountTab() {
   if (!main) return;
   switch (APP_STATE.accountTab) {
     case 'overview': return renderAccOverview(main, u);
+    case 'addresses': return renderAccAddresses(main, u);
     case 'orders': return renderAccOrders(main, u);
     case 'history': return renderAccHistory(main, u);
     case 'saved': return renderAccSaved(main, u);
@@ -2005,6 +2529,112 @@ function copyCoupon(code, btn) {
     toast(`Code ${code} copied`);
     setTimeout(()=> { btn.textContent = 'Copy code'; btn.classList.remove('copied'); }, 1800);
   }).catch(()=> { toast('Code: ' + code); });
+}
+
+function renderAccAddresses(main, u) {
+  const addrs = u.addresses || [];
+  main.innerHTML = `
+    <span class="eyebrow">Delivery</span>
+    <h1>Your addresses.</h1>
+    <p class="sub">Saved addresses appear at checkout. Add one for home, one for office, one for wherever you happen to be.</p>
+    <div style="margin: 24px 0 32px;"><button class="btn btn-primary btn-sm" onclick="openAddressModal()">+ Add new address</button></div>
+    ${addrs.length ? `<div class="addr-grid">${addrs.map(a => addressCard(a, u)).join('')}</div>` : `
+      <div style="border:1px dashed var(--line); padding:48px; text-align:center;">
+        <p style="color:var(--muted); margin-bottom:16px;">No saved addresses yet.</p>
+        <button class="btn btn-primary btn-sm" onclick="openAddressModal()">+ Add your first address</button>
+      </div>
+    `}
+  `;
+}
+function addressCard(a, u) {
+  const isDef = a.isDefault;
+  return `
+    <div class="addr-card ${isDef?'default':''}">
+      ${isDef ? '<span class="addr-default-pill">Default</span>' : ''}
+      <div class="addr-label">${esc(a.label || 'Address')}</div>
+      <div class="addr-name">${esc(a.recipient || u.name)}</div>
+      <div class="addr-body">
+        ${esc(a.line1)}${a.line2 ? '<br>'+esc(a.line2) : ''}<br>
+        ${esc(a.city)}${a.region?', '+esc(a.region):''} ${esc(a.postal)}<br>
+        ${esc(a.country)}<br>
+        <span style="color:var(--ink-soft);">${esc(a.phone || u.phone)}</span>
+      </div>
+      <div class="addr-actions">
+        <button onclick="openAddressModal('${a.id}')">Edit</button>
+        ${!isDef ? `<button onclick="setDefaultAddress('${a.id}')">Set default</button>` : ''}
+        <button onclick="deleteAddress('${a.id}')">Delete</button>
+      </div>
+    </div>
+  `;
+}
+function openAddressModal(id) {
+  const u = currentUser(); if (!u) return;
+  if (!u.addresses) u.addresses = [];
+  const a = id ? u.addresses.find(x => x.id === id) : null;
+  const isEdit = !!a;
+  const d = a || { id: uid('a'), label: 'Home', recipient: u.name, phone: u.phone, line1: '', line2: '', city: '', region: '', postal: '', country: 'India', isDefault: u.addresses.length === 0 };
+  showModal(`
+    <div class="modal-head">
+      <div><span class="eyebrow">${isEdit?'Edit':'New'} address</span><h2 style="margin-top:6px;">Delivery details</h2></div>
+      <button class="icon-btn" onclick="closeModal()"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    </div>
+    <div class="form-grid">
+      <div class="field"><label>Label</label><input id="ad-label" value="${esc(d.label)}" placeholder="Home, Office, etc." /></div>
+      <div class="field"><label>Recipient name</label><input id="ad-recipient" value="${esc(d.recipient)}" /></div>
+      <div class="field full"><label>Phone (for delivery contact)</label><input id="ad-phone" value="${esc(d.phone||'')}" type="tel" /></div>
+      <div class="field full"><label>Address line 1</label><input id="ad-line1" value="${esc(d.line1)}" placeholder="House / flat / building, street" /></div>
+      <div class="field full"><label>Address line 2 (optional)</label><input id="ad-line2" value="${esc(d.line2)}" placeholder="Landmark, area" /></div>
+      <div class="field"><label>City</label><input id="ad-city" value="${esc(d.city)}" /></div>
+      <div class="field"><label>State / region</label><input id="ad-region" value="${esc(d.region)}" /></div>
+      <div class="field"><label>Postal / ZIP code</label><input id="ad-postal" value="${esc(d.postal)}" /></div>
+      <div class="field"><label>Country</label><select id="ad-country">${COUNTRIES.map(c => `<option value="${c}" ${c===d.country?'selected':''}>${c}</option>`).join('')}</select></div>
+      <div class="field full"><label><input type="checkbox" id="ad-default" ${d.isDefault?'checked':''} style="margin-right:8px;"/> Make this my default address</label></div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px;padding-top:24px;border-top:1px solid var(--line);">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary btn-sm" onclick="saveAddress('${d.id}', ${isEdit})">${isEdit?'Save changes':'Save address'}</button>
+    </div>
+  `);
+}
+function saveAddress(id, isEdit) {
+  const u = currentUser(); if (!u) return;
+  if (!u.addresses) u.addresses = [];
+  const obj = {
+    id,
+    label: document.getElementById('ad-label').value.trim() || 'Home',
+    recipient: document.getElementById('ad-recipient').value.trim() || u.name,
+    phone: document.getElementById('ad-phone').value.trim(),
+    line1: document.getElementById('ad-line1').value.trim(),
+    line2: document.getElementById('ad-line2').value.trim(),
+    city: document.getElementById('ad-city').value.trim(),
+    region: document.getElementById('ad-region').value.trim(),
+    postal: document.getElementById('ad-postal').value.trim(),
+    country: document.getElementById('ad-country').value,
+    isDefault: document.getElementById('ad-default').checked,
+  };
+  if (!obj.line1 || !obj.city || !obj.postal) { toast('Please fill in line 1, city, and postal code'); return; }
+  if (obj.isDefault) u.addresses.forEach(a => a.isDefault = false);
+  if (isEdit) {
+    const i = u.addresses.findIndex(a => a.id === id);
+    u.addresses[i] = obj;
+  } else {
+    if (!u.addresses.length) obj.isDefault = true;
+    u.addresses.push(obj);
+  }
+  saveData(DATA); closeModal(); toast(isEdit?'Address updated':'Address saved');
+  if (APP_STATE.accountTab === 'addresses') renderAccount(document.getElementById('app'));
+}
+function setDefaultAddress(id) {
+  const u = currentUser(); if (!u) return;
+  u.addresses.forEach(a => a.isDefault = (a.id === id));
+  saveData(DATA); toast('Default address updated'); renderAccount(document.getElementById('app'));
+}
+function deleteAddress(id) {
+  const u = currentUser(); if (!u) return;
+  if (!confirm('Delete this address?')) return;
+  u.addresses = u.addresses.filter(a => a.id !== id);
+  if (u.addresses.length && !u.addresses.find(a => a.isDefault)) u.addresses[0].isDefault = true;
+  saveData(DATA); toast('Address deleted'); renderAccount(document.getElementById('app'));
 }
 
 function renderAccSettings(main, u) {
