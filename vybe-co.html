@@ -39,6 +39,18 @@
   .display-script { font-family: var(--script); font-size: clamp(72px, 12vw, 180px); line-height: .9; }
   .article-gallery { display:grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap:16px; max-width: 900px; margin: 56px auto 24px; padding: 0 24px; }
   .article-gallery img { width:100%; aspect-ratio: 4/5; object-fit: cover; background: var(--bg-soft); }
+  .lightbox { position: fixed; inset: 0; background: rgba(0,0,0,.92); z-index: 200; display: none; align-items: center; justify-content: center; padding: 24px; }
+  .lightbox.open { display: flex; }
+  .lightbox img { max-width: 95vw; max-height: 95vh; object-fit: contain; cursor: zoom-out; }
+  .lightbox .lb-close { position: absolute; top: 24px; right: 24px; color: #fff; font-size: 28px; cursor: pointer; background: none; border: none; opacity: .8; }
+  .lightbox .lb-close:hover { opacity: 1; }
+  .lightbox .lb-prev, .lightbox .lb-next { position: absolute; top: 50%; transform: translateY(-50%); color: #fff; font-size: 40px; cursor: pointer; background: none; border: none; padding: 16px; opacity: .6; }
+  .lightbox .lb-prev:hover, .lightbox .lb-next:hover { opacity: 1; }
+  .lightbox .lb-prev { left: 24px; }
+  .lightbox .lb-next { right: 24px; }
+  .lightbox .lb-counter { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 12px; letter-spacing: .2em; text-transform: uppercase; opacity: .7; }
+  .pdp-gallery img { cursor: zoom-in; }
+  .article-gallery img { cursor: zoom-in; }
   .otp-display { background: var(--bg-soft); border: 1px solid var(--line); padding: 20px; margin: 20px 0; text-align: center; }
   .otp-display .otp-label { font-size: 10px; letter-spacing: .22em; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
   .otp-display .otp-code { font-family: 'Cormorant Garamond', serif; font-size: 36px; font-weight: 400; letter-spacing: .4em; color: var(--ink); margin-left: .4em; }
@@ -587,6 +599,7 @@
 </div>
 
 <!-- =============== Toast =============== -->
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()"><button class="lb-close" onclick="closeLightbox()">✕</button><button class="lb-prev" onclick="lightboxNav(-1)">‹</button><img id="lightboxImg" /><button class="lb-next" onclick="lightboxNav(1)">›</button><div class="lb-counter" id="lightboxCounter"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -654,6 +667,16 @@ const SEED = {
     taxLabel: 'GST',
     razorpayKey: '',       // paste your Razorpay key_id to enable real payments
     sizeOptions: ['XS','S','M','L','XL'],
+    shippingZones: [
+      { id: 'z-1', name: 'Within India', countries: ['India'], postalPrefix: '', rate: 80, freeOver: 2500 },
+      { id: 'z-2', name: 'International', countries: ['*'], postalPrefix: '', rate: 2500, freeOver: 0 },
+    ],
+    twilioSid: '', twilioToken: '', twilioFrom: '',
+    emailjsServiceId: '', emailjsTemplateId: '', emailjsPublicKey: '',
+    newsletterUrl: '',
+    liveChatSnippet: '',
+    gaMeasurementId: '',
+    giftCards: [],
     baseCurrency: 'USD',
     currencies: [
       { code: 'USD', symbol: '$',   rate: 1 },
@@ -719,7 +742,25 @@ function loadData() {
     return parsed;
   } catch (e) { console.error(e); return JSON.parse(JSON.stringify(SEED)); }
 }
-function saveData(d) { localStorage.setItem(LS_KEY, JSON.stringify(d)); }
+function saveData(d) {
+  try { localStorage.setItem(LS_KEY, JSON.stringify(d)); }
+  catch(e) { console.warn('[saveData] localStorage quota exceeded:', e); }
+}
+/* Resolve "local:xxx" image references stored by the admin panel */
+function _resolveLocalImg(el) {
+  const src = el.getAttribute('src') || '';
+  if (src.startsWith('local:')) {
+    el.src = localStorage.getItem('vybe_img_' + src.slice(6)) || '';
+  }
+}
+(new MutationObserver(muts => {
+  muts.forEach(m => m.addedNodes.forEach(n => {
+    if (n.nodeName === 'IMG') _resolveLocalImg(n);
+    else if (n.querySelectorAll) n.querySelectorAll('img').forEach(img => {
+      if ((img.getAttribute('src') || '').startsWith('local:')) _resolveLocalImg(img);
+    });
+  }));
+})).observe(document.documentElement, { childList: true, subtree: true });
 function uid(prefix='id') { return prefix + '-' + Math.random().toString(36).slice(2,9); }
 function getActiveCurrency() {
   const list = (DATA.config.currencies && DATA.config.currencies.length) ? DATA.config.currencies : [{code:'USD',symbol:'$',rate:1}];
@@ -872,6 +913,51 @@ function updateCurrencyLabel() {
   el.textContent = active;
 }
 
+function subscribeNewsletter(email) {
+  email = (email||'').trim();
+  if (!email) { toast('Email required'); return; }
+  const url = DATA.config.newsletterUrl;
+  if (!url) {
+    if (!DATA.newsletterSubs) DATA.newsletterSubs = [];
+    if (!DATA.newsletterSubs.includes(email)) DATA.newsletterSubs.push(email);
+    saveData(DATA);
+    toast('Subscribed ✦ (saved locally)');
+    return;
+  }
+  fetch(url, { method: 'POST', mode: 'no-cors', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body: 'email=' + encodeURIComponent(email) })
+    .then(() => toast('Subscribed ✦'))
+    .catch(() => toast('Subscribe failed'));
+}
+
+/* ---------- Lightbox ---------- */
+let LIGHTBOX = { imgs: [], idx: 0 };
+function openLightbox(imgs, idx) {
+  LIGHTBOX.imgs = Array.isArray(imgs) ? imgs : [imgs];
+  LIGHTBOX.idx = idx || 0;
+  document.getElementById('lightbox').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  updateLightbox();
+}
+function closeLightbox() {
+  document.getElementById('lightbox').classList.remove('open');
+  document.body.style.overflow = '';
+}
+function lightboxNav(d) {
+  if (!LIGHTBOX.imgs.length) return;
+  LIGHTBOX.idx = (LIGHTBOX.idx + d + LIGHTBOX.imgs.length) % LIGHTBOX.imgs.length;
+  updateLightbox();
+}
+function updateLightbox() {
+  document.getElementById('lightboxImg').src = LIGHTBOX.imgs[LIGHTBOX.idx] || '';
+  document.getElementById('lightboxCounter').textContent = LIGHTBOX.imgs.length > 1 ? (LIGHTBOX.idx + 1) + ' / ' + LIGHTBOX.imgs.length : '';
+}
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox') || !document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  if (e.key === 'ArrowLeft') lightboxNav(-1);
+  if (e.key === 'ArrowRight') lightboxNav(1);
+});
+
 function toast(msg) {
   const el = document.getElementById('toast');
   el.textContent = msg;
@@ -921,6 +1007,58 @@ function navigate() {
   updateCartCount();
   renderProfileDropdown();
   updateCurrencyLabel();
+  updateSEO(r);
+}
+
+function updateSEO(route) {
+  const c = DATA.config;
+  let title = (c.siteName || 'Vybe Co.') + ' — ' + (c.tagline || 'Curated pieces, endless vybes.');
+  let desc = c.tagline || '';
+  let image = c.heroImage || '';
+  let url = location.href;
+  if (route.name === 'product') {
+    const p = DATA.products.find(x => x.id === route.params[0]);
+    if (p) { title = p.name + ' — ' + (c.siteName||'Vybe Co.'); desc = (p.description||'').slice(0,160); image = p.image || image; }
+  } else if (route.name === 'shop' && route.params[0]) {
+    const cat = DATA.categories.find(x => x.slug === route.params[0]);
+    if (cat) { title = cat.name + ' — ' + (c.siteName||'Vybe Co.'); image = cat.image || image; }
+  } else if (route.name === 'journal' && route.params[0]) {
+    const a = DATA.articles.find(x => x.id === route.params[0]);
+    if (a) { title = a.title + ' — ' + (c.siteName||'Vybe Co.'); desc = a.excerpt || ''; image = a.image || image; }
+  }
+  document.title = title;
+  function meta(name, content, attr) {
+    attr = attr || 'name';
+    let el = document.querySelector(`meta[${attr}="${name}"]`);
+    if (!el) { el = document.createElement('meta'); el.setAttribute(attr, name); document.head.appendChild(el); }
+    el.setAttribute('content', content || '');
+  }
+  meta('description', desc);
+  meta('og:title', title, 'property');
+  meta('og:description', desc, 'property');
+  meta('og:image', image, 'property');
+  meta('og:url', url, 'property');
+  meta('og:type', route.name === 'product' ? 'product' : 'website', 'property');
+  meta('twitter:card', 'summary_large_image');
+  meta('twitter:title', title);
+  meta('twitter:description', desc);
+  meta('twitter:image', image);
+  let ld = document.getElementById('jsonld');
+  if (!ld) { ld = document.createElement('script'); ld.type = 'application/ld+json'; ld.id = 'jsonld'; document.head.appendChild(ld); }
+  if (route.name === 'product') {
+    const p = DATA.products.find(x => x.id === route.params[0]);
+    if (p) {
+      const r = productRating(p);
+      ld.textContent = JSON.stringify({
+        '@context': 'https://schema.org', '@type': 'Product',
+        name: p.name, image: p.images || [p.image], description: p.description,
+        offers: { '@type': 'Offer', price: p.salePrice || p.price, priceCurrency: c.baseCurrency || 'USD', availability: productTotalStock(p)>0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock' },
+        ...(r.count ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: r.avg.toFixed(1), reviewCount: r.count } } : {})
+      });
+    } else ld.textContent = '';
+  } else {
+    ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: c.siteName || 'Vybe Co.', url: location.origin });
+  }
 }
 
 window.addEventListener('hashchange', navigate);
@@ -1253,7 +1391,7 @@ function renderProduct(app, id) {
       </div>
       <div class="pdp">
         <div class="pdp-gallery">
-          ${imgs.map(src => `<img src="${esc(src)}" alt="${esc(p.name)}" />`).join('')}
+          ${imgs.map((src,i) => `<img src="${esc(src)}" alt="${esc(p.name)}" onclick='openLightbox(${JSON.stringify(imgs)}, ${i})' />`).join('')}
         </div>
         <div class="pdp-info">
           <span class="eyebrow">${esc(cat?.name || '')}</span>
@@ -1417,7 +1555,7 @@ function renderArticle(app, id) {
       <div class="article-body">
         ${a.body.split('\n').filter(Boolean).map(par => `<p>${esc(par)}</p>`).join('')}
       </div>
-      ${a.images && a.images.length ? `<div class="article-gallery">${a.images.map(src => `<img src="${esc(src)}" alt="" />`).join('')}</div>` : ''}
+      ${a.images && a.images.length ? `<div class="article-gallery">${a.images.map((src,i) => `<img src="${esc(src)}" alt="" onclick='openLightbox(${JSON.stringify(a.images)}, ${i})' />`).join('')}</div>` : ''}
     </section>
     ${other.length ? `
     <section class="section-tight" style="background:var(--bg-soft);margin-top:80px;">
@@ -1888,10 +2026,25 @@ function checkout() {
   openCheckoutModal();
 }
 
+function calcShipping(subtotal, address) {
+  const zones = (DATA.config.shippingZones||[]);
+  if (!zones.length) return subtotal >= 150 ? 0 : 12;
+  const country = address ? (address.country || '') : '';
+  const postal = address ? (address.postal || '') : '';
+  for (const z of zones) {
+    const matchesCountry = !z.countries || !z.countries.length || z.countries.includes('*') || z.countries.includes(country);
+    const matchesPostal = !z.postalPrefix || (postal && postal.startsWith(z.postalPrefix));
+    if (matchesCountry && matchesPostal) {
+      return (z.freeOver && subtotal >= z.freeOver) ? 0 : (Number(z.rate) || 0);
+    }
+  }
+  return subtotal >= 150 ? 0 : 12;
+}
 function openCheckoutModal() {
   const u = currentUser(); if (!u) return;
   const subtotal = DATA.cart.reduce((s,l)=>{ const p = DATA.products.find(x => x.id === l.productId); return s + (p ? (p.salePrice||p.price) * l.qty : 0); }, 0);
-  const shipping = subtotal >= 150 ? 0 : 12;
+  const selectedAddr = u.addresses.find(a => a.id === APP_STATE.checkoutAddressId) || u.addresses[0];
+  const shipping = calcShipping(subtotal, selectedAddr);
   const discount = computeDiscount(subtotal);
   const taxRate = Number(DATA.config.taxRate || 0);
   const taxable = Math.max(0, subtotal - discount);
@@ -1926,6 +2079,41 @@ function openCheckoutModal() {
     </div>
     <button class="btn btn-primary" style="width:100%;margin-top:24px;" onclick="placeOrder()">Place order</button>
   `);
+}
+
+function sendOrderEmail(order, user) {
+  const c = DATA.config;
+  if (!c.emailjsServiceId || !c.emailjsTemplateId || !c.emailjsPublicKey) return;
+  const send = () => {
+    try {
+      window.emailjs.init({ publicKey: c.emailjsPublicKey });
+      const a = order.shippingAddress || {};
+      const items_text = order.items.map(i => `${i.qty}x ${i.name}${i.size?' ('+i.size+')':''} - ${fmt(i.price * i.qty)}`).join('\n');
+      const params = {
+        to_email: user.email || '',
+        to_name: user.name || user.username || '',
+        order_number: order.number,
+        items_text,
+        subtotal: fmt(order.subtotal),
+        shipping: fmt(order.shipping),
+        tax: fmt(order.tax || 0),
+        discount: order.discount ? '-' + fmt(order.discount) : '0',
+        total: fmt(order.total),
+        ship_to: `${a.recipient||''}\n${a.line1||''}${a.line2?'\n'+a.line2:''}\n${a.city||''}, ${a.region||''} ${a.postal||''}\n${a.country||''}`,
+        ship_phone: a.phone || user.phone || '',
+        site_name: c.siteName || 'Vybe Co.',
+      };
+      window.emailjs.send(c.emailjsServiceId, c.emailjsTemplateId, params)
+        .then(() => console.log('[email] sent'))
+        .catch(e => console.warn('[email] failed', e));
+    } catch (e) { console.warn('[email] error', e); }
+  };
+  if (window.emailjs) { send(); return; }
+  const sc = document.createElement('script');
+  sc.src = 'https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js';
+  sc.onload = send;
+  sc.onerror = () => console.warn('[email] SDK load failed');
+  document.head.appendChild(sc);
 }
 
 function placeOrder() {
@@ -2002,6 +2190,9 @@ function _finalizeOrder(u, subtotal, shipping, discount, tax, total, address, pa
   closeCart();
   closeModal();
   APP_STATE.checkoutAddressId = null;
+  APP_STATE.giftCredit = 0;
+  APP_STATE.giftCardId = null;
+  sendOrderEmail(order, u);
   toast('Order placed — thank you ✦');
   if (APP_STATE.currentUserId) { APP_STATE.accountTab = 'orders'; location.hash = '#/account'; }
   else navigate();
@@ -2693,6 +2884,32 @@ async function _bootstrap(){
   }
 }
 _bootstrap();
+function injectIntegrations() {
+  const c = DATA.config || {};
+  if (c.gaMeasurementId && !window._gaInjected) {
+    window._gaInjected = true;
+    const sc = document.createElement('script');
+    sc.async = true; sc.src = 'https://www.googletagmanager.com/gtag/js?id=' + c.gaMeasurementId;
+    document.head.appendChild(sc);
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function(){ window.dataLayer.push(arguments); };
+    window.gtag('js', new Date()); window.gtag('config', c.gaMeasurementId);
+  }
+  if (c.liveChatSnippet && !window._chatInjected) {
+    window._chatInjected = true;
+    const div = document.createElement('div');
+    div.innerHTML = c.liveChatSnippet;
+    Array.from(div.children).forEach(el => {
+      if (el.tagName === 'SCRIPT') {
+        const sc = document.createElement('script');
+        Array.from(el.attributes).forEach(a => sc.setAttribute(a.name, a.value));
+        if (el.src) sc.src = el.src; else sc.textContent = el.textContent;
+        document.body.appendChild(sc);
+      } else { document.body.appendChild(el); }
+    });
+  }
+}
+setTimeout(injectIntegrations, 1000);
 </script>
 </body>
 </html>
