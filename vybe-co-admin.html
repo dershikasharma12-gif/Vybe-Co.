@@ -322,7 +322,7 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'
 let DATA = loadData();
 
 /* ===== Image upload helpers (drag-and-drop + click to upload) ===== */
-const COMPRESS_MAX_W = 1800;  // max width/height after compression
+const COMPRESS_MAX_W = 1400;  // max width/height after compression (keep canvas under memory limits)
 const COMPRESS_QUALITY = 0.82; // JPEG quality 0..1
 
 /* --- Local image store: images stay OUT of the main data blob & JSONBin ---
@@ -425,12 +425,16 @@ async function pickAndSetImage(inputId, previewId) {
   inp.type = 'file'; inp.accept = 'image/*';
   inp.onchange = async e => {
     const f = e.target.files[0]; if (!f) return;
-    if (f.size > 25 * 1024 * 1024) { toast('Image too huge (>25MB).'); return; }
     toast('Uploading...');
-    const url = await uploadImageBest(f);
-    document.getElementById(inputId).value = url;
-    setImgPreview(previewId, url);
-    toast('Image saved');
+    try {
+      const url = await uploadImageBest(f);
+      document.getElementById(inputId).value = url;
+      setImgPreview(previewId, url);
+      toast('Image saved ✓');
+    } catch(err) {
+      console.error('[upload] failed:', err);
+      toast('Upload failed — try a smaller image or paste a URL');
+    }
   };
   inp.click();
 }
@@ -447,12 +451,16 @@ function wireImageDrop(zoneId, inputId, previewId) {
   zone.addEventListener('drop', async e => {
     e.preventDefault(); zone.classList.remove('drag-over');
     const f = e.dataTransfer.files[0]; if (!f || !f.type.startsWith('image/')) return;
-    if (f.size > 25 * 1024 * 1024) { toast('Image too huge (>25MB).'); return; }
     toast('Uploading...');
-    const url = await uploadImageBest(f);
-    document.getElementById(inputId).value = url;
-    setImgPreview(previewId, url);
-    toast('Image saved');
+    try {
+      const url = await uploadImageBest(f);
+      document.getElementById(inputId).value = url;
+      setImgPreview(previewId, url);
+      toast('Image saved ✓');
+    } catch(err) {
+      console.error('[upload] failed:', err);
+      toast('Upload failed — try a smaller image or paste a URL');
+    }
   });
 }
 function clearImage(inputId, previewId) {
@@ -506,11 +514,15 @@ async function pickAndAddImages(arrayInputId, thumbsId) {
     const files = Array.from(e.target.files);
     if (files.length) toast('Uploading ' + files.length + ' image' + (files.length>1?'s':'') + '...');
     for (const f of files) {
-      if (f.size > 25 * 1024 * 1024) { console.warn(f.name + ' too large (>25MB), skipped'); continue; }
-      const url = await uploadImageBest(f);
-      addToMulti(arrayInputId, thumbsId, url);
+      try {
+        const url = await uploadImageBest(f);
+        addToMulti(arrayInputId, thumbsId, url);
+      } catch(err) {
+        console.error('[upload] failed for', f.name, err);
+        toast('Failed: ' + f.name + ' — try a smaller image');
+      }
     }
-    if (files.length) toast('Images saved');
+    if (files.length) toast('Images saved ✓');
   };
   inp.click();
 }
@@ -524,11 +536,15 @@ function wireMultiDrop(zoneId, arrayInputId, thumbsId) {
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
     if (files.length) toast('Uploading ' + files.length + ' image' + (files.length>1?'s':'') + '...');
     for (const f of files) {
-      if (f.size > 25 * 1024 * 1024) { console.warn(f.name + ' too large, skipped'); continue; }
-      const url = await uploadImageBest(f);
-      addToMulti(arrayInputId, thumbsId, url);
+      try {
+        const url = await uploadImageBest(f);
+        addToMulti(arrayInputId, thumbsId, url);
+      } catch(err) {
+        console.error('[upload] failed for', f.name, err);
+        toast('Failed: ' + f.name + ' — try a smaller image');
+      }
     }
-    if (files.length) toast('Images saved');
+    if (files.length) toast('Images saved ✓');
   });
 }
 function addToMulti(arrayInputId, thumbsId, url) {
