@@ -322,41 +322,11 @@ function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'
 let DATA = loadData();
 
 /* ===== Image upload helpers (drag-and-drop + click to upload) ===== */
-const COMPRESS_MAX_W = 1400;  // max width/height after compression (keep canvas under memory limits)
-const COMPRESS_QUALITY = 0.82; // JPEG quality 0..1
-
-/* --- Local image store: images stay OUT of the main data blob & JSONBin ---
-   Each uploaded image is saved under its own localStorage key (vybe_img_xxx).
-   Product/article/category data only stores a short "local:xxx" reference.
-   A MutationObserver auto-resolves those references to real src values in the DOM.
-   → ANY size image works with zero setup on the same device/browser.
-   → For cross-device sync, add an ImgBB key in Settings → Integrations.
------------------------------------------------------------------------ */
-function storeLocalImage(dataUrl) {
-  const key = 'img-' + Math.random().toString(36).slice(2, 10);
-  try {
-    localStorage.setItem('vybe_img_' + key, dataUrl);
-    return 'local:' + key;
-  } catch(e) {
-    console.warn('[storeLocalImage] localStorage full, image not persisted');
-    toast('Storage nearly full — add an ImgBB key in Settings for unlimited images');
-    return dataUrl;
-  }
-}
-function _resolveLocalImg(el) {
-  const src = el.getAttribute('src') || '';
-  if (src.startsWith('local:')) {
-    el.src = localStorage.getItem('vybe_img_' + src.slice(6)) || '';
-  }
-}
-(new MutationObserver(muts => {
-  muts.forEach(m => m.addedNodes.forEach(n => {
-    if (n.nodeName === 'IMG') _resolveLocalImg(n);
-    else if (n.querySelectorAll) n.querySelectorAll('img').forEach(img => {
-      if ((img.getAttribute('src') || '').startsWith('local:')) _resolveLocalImg(img);
-    });
-  }));
-})).observe(document.documentElement, { childList: true, subtree: true });
+// Images are compressed to JPEG and stored as base64 directly in product data,
+// which syncs to JSONBin so the live customer site always sees them.
+// For larger/higher-quality images without size limits, add an ImgBB key in Settings.
+const COMPRESS_MAX_W = 700;   // px — keeps base64 output ~30-60 KB per image
+const COMPRESS_QUALITY = 0.72; // JPEG quality
 
 function readFileToDataURL(file) {
   // Auto-compress to a reasonable size before returning as data URL
@@ -416,9 +386,8 @@ async function uploadImageBest(file) {
       console.warn('[imgbb] failed, falling back to base64:', e);
     }
   }
-  // No ImgBB key — compress and store in a dedicated localStorage key (keeps main data small)
-  const dataUrl = await readFileToDataURL(file);
-  return storeLocalImage(dataUrl);
+  // No ImgBB key — compress to base64 and store directly in product data (syncs via JSONBin)
+  return await readFileToDataURL(file);
 }
 async function pickAndSetImage(inputId, previewId) {
   const inp = document.createElement('input');

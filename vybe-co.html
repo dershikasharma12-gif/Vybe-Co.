@@ -746,21 +746,6 @@ function saveData(d) {
   try { localStorage.setItem(LS_KEY, JSON.stringify(d)); }
   catch(e) { console.warn('[saveData] localStorage quota exceeded:', e); }
 }
-/* Resolve "local:xxx" image references stored by the admin panel */
-function _resolveLocalImg(el) {
-  const src = el.getAttribute('src') || '';
-  if (src.startsWith('local:')) {
-    el.src = localStorage.getItem('vybe_img_' + src.slice(6)) || '';
-  }
-}
-(new MutationObserver(muts => {
-  muts.forEach(m => m.addedNodes.forEach(n => {
-    if (n.nodeName === 'IMG') _resolveLocalImg(n);
-    else if (n.querySelectorAll) n.querySelectorAll('img').forEach(img => {
-      if ((img.getAttribute('src') || '').startsWith('local:')) _resolveLocalImg(img);
-    });
-  }));
-})).observe(document.documentElement, { childList: true, subtree: true });
 function uid(prefix='id') { return prefix + '-' + Math.random().toString(36).slice(2,9); }
 function getActiveCurrency() {
   const list = (DATA.config.currencies && DATA.config.currencies.length) ? DATA.config.currencies : [{code:'USD',symbol:'$',rate:1}];
